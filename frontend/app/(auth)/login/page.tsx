@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,7 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      await login(email, password);
+      await login(emailOrUsername, password);
       router.push('/dashboard');
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
@@ -47,18 +47,27 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-sm text-[#8888aa] mb-1 block">Email</label>
+            <label className="text-sm text-[#8888aa] mb-1 block">Email or Username</label>
             <input
-              type="email" value={email} onChange={e => setEmail(e.target.value)}
-              className="input-field" placeholder="sakshi@example.com" required
+              type="text" 
+              value={emailOrUsername} 
+              onChange={e => setEmailOrUsername(e.target.value)}
+              className="input-field" 
+              placeholder="sakshi@example.com or sakshi_ias" 
+              required
             />
+            <p className="text-xs text-[#555] mt-1">💡 Use your email or unique username</p>
           </div>
           <div>
             <label className="text-sm text-[#8888aa] mb-1 block">Password</label>
             <div className="relative">
               <input
-                type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
-                className="input-field pr-10" placeholder="••••••••" required
+                type={showPass ? 'text' : 'password'} 
+                value={password} 
+                onChange={e => setPassword(e.target.value)}
+                className="input-field pr-10" 
+                placeholder="••••••••" 
+                required
               />
               <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8888aa]">
                 {showPass ? <EyeOff size={16} /> : <Eye size={16} />}

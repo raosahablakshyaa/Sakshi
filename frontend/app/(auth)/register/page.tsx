@@ -3,19 +3,52 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
 export default function RegisterPage() {
-  const [form, setForm] = useState({ name: '', email: '', password: '', currentClass: '7', role: 'student', parentEmail: '' });
+  const [form, setForm] = useState({ name: '', email: '', username: '', password: '', currentClass: '7', role: 'student', parentEmail: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [usernameStatus, setUsernameStatus] = useState<'checking' | 'available' | 'taken' | null>(null);
   const { register } = useAuth();
   const router = useRouter();
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
+  // Check username availability
+  const checkUsername = async (username: string) => {
+    if (username.length < 3) {
+      setUsernameStatus(null);
+      return;
+    }
+    
+    setUsernameStatus('checking');
+    try {
+      const res = await fetch('http://localhost:8080/api/auth/check-username', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
+      const data = await res.json();
+      setUsernameStatus(data.available ? 'available' : 'taken');
+    } catch (err) {
+      console.error('Error checking username:', err);
+    }
+  };
+
+  const handleUsernameChange = (e: string) => {
+    set('username', e);
+    checkUsername(e);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (usernameStatus !== 'available') {
+      setError('Please choose an available username');
+      return;
+    }
+    
     setLoading(true);
     setError('');
     try {
@@ -52,6 +85,29 @@ export default function RegisterPage() {
             <input type="email" value={form.email} onChange={e => set('email', e.target.value)} className="input-field" placeholder="sakshi@example.com" required />
           </div>
           <div>
+            <label className="text-sm text-[#8888aa] mb-1 block">Username (Unique)</label>
+            <div className="relative">
+              <input 
+                type="text" 
+                value={form.username} 
+                onChange={e => handleUsernameChange(e.target.value)} 
+                className="input-field pr-10" 
+                placeholder="sakshi_ias" 
+                required 
+                minLength={3}
+              />
+              {usernameStatus === 'checking' && <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 spinner text-[#6c63ff]" />}
+              {usernameStatus === 'available' && <CheckCircle2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-400" />}
+              {usernameStatus === 'taken' && <XCircle size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400" />}
+            </div>
+            <p className="text-xs text-[#555] mt-1">
+              {usernameStatus === 'available' && '✅ Username available'}
+              {usernameStatus === 'taken' && '❌ Username taken'}
+              {usernameStatus === 'checking' && '⏳ Checking...'}
+              {!usernameStatus && '💡 Min 3 characters, lowercase only'}
+            </p>
+          </div>
+          <div>
             <label className="text-sm text-[#8888aa] mb-1 block">Password</label>
             <input type="password" value={form.password} onChange={e => set('password', e.target.value)} className="input-field" placeholder="Min 6 characters" required minLength={6} />
           </div>
@@ -78,7 +134,7 @@ export default function RegisterPage() {
               <input type="email" value={form.parentEmail} onChange={e => set('parentEmail', e.target.value)} className="input-field" placeholder="parent@example.com" />
             </div>
           )}
-          <button type="submit" disabled={loading} className="btn-primary w-full py-3 flex items-center justify-center gap-2">
+          <button type="submit" disabled={loading || usernameStatus !== 'available'} className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50">
             {loading ? <><Loader2 size={18} className="spinner" /> Creating account...</> : 'Create Free Account'}
           </button>
         </form>

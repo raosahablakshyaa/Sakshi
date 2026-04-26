@@ -6,6 +6,7 @@ interface User {
   id: string;
   name: string;
   email: string;
+  username: string;
   role: 'student' | 'parent' | 'admin';
   currentClass: number;
   streak: number;
@@ -19,7 +20,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (emailOrUsername: string, password: string) => Promise<void>;
   register: (data: object) => Promise<void>;
   logout: () => void;
   updateUser: (data: Partial<User>) => void;
@@ -49,8 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   };
 
-  const login = async (email: string, password: string) => {
-    const res = await authAPI.login({ email, password });
+  const login = async (emailOrUsername: string, password: string) => {
+    const res = await authAPI.login({ emailOrUsername, password });
     saveAuth(res.data.token, res.data.user);
   };
 

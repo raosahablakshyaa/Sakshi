@@ -7,7 +7,7 @@ const currentAffairsSchema = new mongoose.Schema({
   category: { type: String, enum: ['polity', 'economy', 'science', 'environment', 'international', 'social', 'history', 'geography', 'general'], default: 'general' },
   source: { type: String },
   sourceUrl: { type: String },
-  date: { type: String, required: true }, // YYYY-MM-DD
+  date: { type: String, required: true },
   tags: [String],
   isActive: { type: Boolean, default: true },
   quiz: [{

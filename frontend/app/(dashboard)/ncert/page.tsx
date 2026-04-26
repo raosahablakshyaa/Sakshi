@@ -1,14 +1,16 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { ncertAPI } from '@/lib/api';
-import { BookOpen, ChevronRight, Loader2, Layers, RotateCcw, Sparkles, FileText, Trophy, AlertCircle } from 'lucide-react';
+import { BookOpen, ChevronRight, Loader2, RotateCcw, Sparkles, FileText, Trophy, AlertCircle, ExternalLink, BookMarked, Lightbulb } from 'lucide-react';
 
 interface Chapter { index: number; title: string; }
-interface Flashcard { front: string; back: string; difficulty: string; }
 interface PYQ {
   year: number; exam: string; paper: string; question: string;
   options: string[]; correctAnswer: string; explanation: string;
   difficulty: string; topic: string;
+}
+interface YouTubeVideo {
+  title: string; channel: string; duration: string; url: string; description: string; quality: string;
 }
 
 const SUBJECTS = [
@@ -19,31 +21,56 @@ const SUBJECTS = [
   { key: 'science', label: 'Science', icon: '🔬', color: '#06b6d4' },
 ];
 const CLASSES = [6, 7, 8, 9, 10, 11, 12];
-type Tab = 'overview' | 'flashcards' | 'pyqs';
+type Tab = 'pyqs' | 'videos' | 'resources';
+
+const STUDY_RESOURCES = [
+  {
+    title: 'IAS Study Materials',
+    description: 'Comprehensive free online notes for all UPSC subjects',
+    icon: '📚',
+    url: 'https://www.clearias.com/ias-study-materials/',
+    color: 'from-blue-500/20 to-blue-600/20',
+    borderColor: 'border-blue-500/30'
+  },
+  {
+    title: 'UPSC CSE Syllabus',
+    description: 'Complete UPSC Civil Services Exam syllabus breakdown',
+    icon: '📋',
+    url: 'https://www.clearias.com/upsc-cse-syllabus/',
+    color: 'from-purple-500/20 to-purple-600/20',
+    borderColor: 'border-purple-500/30'
+  },
+  {
+    title: 'Previous Year Questions',
+    description: 'UPSC IAS/IPS previous year question papers and solutions',
+    icon: '🎯',
+    url: 'https://www.clearias.com/upsc-civil-services-exam-previous-year-question-papers-ias-ips/',
+    color: 'from-orange-500/20 to-orange-600/20',
+    borderColor: 'border-orange-500/30'
+  }
+];
 
 export default function NCERTPage() {
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedClass, setSelectedClass] = useState(7);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [overview, setOverview] = useState('');
-  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [activeTab, setActiveTab] = useState<Tab>('pyqs');
   const [pyqs, setPyqs] = useState<PYQ[]>([]);
   const [loadingChapters, setLoadingChapters] = useState(false);
   const [loadingContent, setLoadingContent] = useState(false);
-  const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
   const [expandedPYQ, setExpandedPYQ] = useState<number | null>(null);
   const [pyqAnswers, setPyqAnswers] = useState<Record<number, string>>({});
+  const [videos, setVideos] = useState<YouTubeVideo[]>([]);
+  const [loadingVideos, setLoadingVideos] = useState(false);
 
   const loadChapters = useCallback(async () => {
     if (!selectedSubject) return;
     setLoadingChapters(true);
     setChapters([]);
     setSelectedChapter(null);
-    setOverview('');
-    setFlashcards([]);
     setPyqs([]);
+    setVideos([]);
     try {
       const res = await ncertAPI.chapters({ subject: selectedSubject, class: selectedClass });
       setChapters(res.data.chapters);
@@ -55,37 +82,16 @@ export default function NCERTPage() {
 
   const loadChapter = async (chapter: Chapter) => {
     setSelectedChapter(chapter);
-    setOverview('');
-    setFlashcards([]);
     setPyqs([]);
-    setFlippedCards(new Set());
+    setVideos([]);
     setPyqAnswers({});
     setExpandedPYQ(null);
-    setActiveTab('overview');
-    setLoadingContent(true);
-    try {
-      const res = await ncertAPI.overview({ subject: selectedSubject, chapter: chapter.title, class: selectedClass });
-      setOverview(res.data.overview);
-    } catch { setOverview('Could not load overview. Please try again.'); }
-    finally { setLoadingContent(false); }
-  };
-
-  const loadFlashcards = async () => {
-    if (!selectedChapter) return;
-    setActiveTab('flashcards');
-    if (flashcards.length > 0) return;
-    setLoadingContent(true);
-    try {
-      const res = await ncertAPI.flashcards({ subject: selectedSubject, chapter: selectedChapter.title, class: selectedClass });
-      setFlashcards(res.data.flashcards);
-    } catch { /* silent */ }
-    finally { setLoadingContent(false); }
+    setActiveTab('pyqs');
   };
 
   const loadPYQs = async () => {
     if (!selectedChapter) return;
     setActiveTab('pyqs');
-    if (pyqs.length > 0) return;
     setLoadingContent(true);
     try {
       const res = await ncertAPI.pyqs({ subject: selectedSubject, chapter: selectedChapter.title, class: selectedClass });
@@ -94,13 +100,16 @@ export default function NCERTPage() {
     finally { setLoadingContent(false); }
   };
 
-  const renderMarkdown = (text: string) => text
-    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#f0f0ff">$1</strong>')
-    .replace(/^## (.*$)/gm, '<h2 style="color:#a78bfa;font-size:17px;font-weight:700;margin:20px 0 8px;border-bottom:1px solid #2a2a3d;padding-bottom:6px">$1</h2>')
-    .replace(/^### (.*$)/gm, '<h3 style="color:#f5c842;font-size:14px;font-weight:600;margin:14px 0 6px">$1</h3>')
-    .replace(/^- (.*$)/gm, '<li style="margin:4px 0;color:#c0c0d0;padding-left:4px">• $1</li>')
-    .replace(/^\d+\. (.*$)/gm, '<li style="margin:4px 0;color:#c0c0d0;padding-left:4px">$&</li>')
-    .replace(/\n/g, '<br/>');
+  const loadVideos = async () => {
+    if (!selectedChapter) return;
+    setActiveTab('videos');
+    setLoadingVideos(true);
+    try {
+      const res = await ncertAPI.youtubeVideos({ subject: selectedSubject, chapter: selectedChapter.title, class: selectedClass });
+      setVideos(res.data.videos);
+    } catch { /* silent */ }
+    finally { setLoadingVideos(false); }
+  };
 
   const subjectInfo = SUBJECTS.find(s => s.key === selectedSubject);
   const prelims = pyqs.filter(q => q.exam?.includes('Prelims') || q.options?.length > 0);
@@ -113,7 +122,37 @@ export default function NCERTPage() {
         <h1 className="text-2xl font-black flex items-center gap-2">
           <BookOpen size={24} className="text-[#22c55e]" /> NCERT Learning Hub
         </h1>
-        <p className="text-[#8888aa] text-sm mt-1">Complete NCERT Class 6–12 with AI Overview, PYQs & Flashcards</p>
+        <p className="text-[#8888aa] text-sm mt-1">Complete NCERT Class 6–12 with PYQs & YouTube Videos</p>
+      </div>
+
+      {/* Study Resources Section */}
+      <div className="glass p-6 rounded-xl">
+        <div className="flex items-center gap-2 mb-4">
+          <Lightbulb size={20} className="text-[#f5c842]" />
+          <h2 className="text-lg font-bold">📖 External Study Resources</h2>
+        </div>
+        <p className="text-[#8888aa] text-sm mb-4">Access free UPSC preparation materials from ClearIAS</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {STUDY_RESOURCES.map((resource, idx) => (
+            <a
+              key={idx}
+              href={resource.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`group p-4 rounded-xl border ${resource.borderColor} bg-gradient-to-br ${resource.color} hover:shadow-lg hover:shadow-[#6c63ff]/20 transition-all duration-300 cursor-pointer`}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <span className="text-3xl">{resource.icon}</span>
+                <ExternalLink size={16} className="text-[#8888aa] group-hover:text-[#6c63ff] transition-colors" />
+              </div>
+              <h3 className="font-bold text-sm mb-1 group-hover:text-[#6c63ff] transition-colors">{resource.title}</h3>
+              <p className="text-xs text-[#8888aa] leading-relaxed">{resource.description}</p>
+              <div className="mt-3 flex items-center gap-1 text-[#6c63ff] text-xs font-semibold group-hover:gap-2 transition-all">
+                Visit Resource <ChevronRight size={12} />
+              </div>
+            </a>
+          ))}
+        </div>
       </div>
 
       {/* Subject + Class selector */}
@@ -182,49 +221,46 @@ export default function NCERTPage() {
               <div className="glass p-10 text-center h-full flex flex-col items-center justify-center min-h-[400px]">
                 <Sparkles size={40} className="text-[#6c63ff] mb-4 opacity-50" />
                 <h3 className="font-bold text-lg mb-2">Select a Chapter</h3>
-                <p className="text-[#8888aa] text-sm max-w-xs">Click any chapter to get complete overview, all PYQs from 1979–2024, and flashcards</p>
+                <p className="text-[#8888aa] text-sm max-w-xs">Click any chapter to access PYQs and YouTube videos</p>
               </div>
             ) : (
-              <div className="glass rounded-xl overflow-hidden">
+              <div className="glass rounded-xl overflow-hidden flex flex-col h-full">
                 {/* Chapter header */}
                 <div className="p-4 border-b border-[#2a2a3d]">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="badge badge-primary text-xs">Chapter {selectedChapter.index}</span>
                     <span className="badge badge-green text-xs">{subjectInfo?.label} • Class {selectedClass}</span>
                   </div>
-                  <h2 className="font-black text-base">{selectedChapter.title}</h2>
+                  <h2 className="font-black text-base mb-3">{selectedChapter.title}</h2>
+                  
+                  {/* Download button */}
+                  <a href="https://ncert.nic.in/textbook.php" target="_blank" rel="noopener noreferrer"
+                    className="btn-primary text-sm py-2 px-4 flex items-center gap-2 justify-center w-full">
+                    <FileText size={14} /> Download NCERT PDF
+                  </a>
                 </div>
 
                 {/* Tabs */}
                 <div className="flex border-b border-[#2a2a3d]">
-                  <button onClick={() => setActiveTab('overview')}
-                    className={`flex-1 py-3 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${activeTab === 'overview' ? 'text-[#6c63ff] border-b-2 border-[#6c63ff] bg-[#6c63ff]/5' : 'text-[#8888aa] hover:text-white'}`}>
-                    <Sparkles size={13} /> Overview
-                  </button>
                   <button onClick={loadPYQs}
                     className={`flex-1 py-3 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${activeTab === 'pyqs' ? 'text-[#f5c842] border-b-2 border-[#f5c842] bg-[#f5c842]/5' : 'text-[#8888aa] hover:text-white'}`}>
                     <Trophy size={13} /> PYQs {pyqs.length > 0 && <span className="badge badge-gold text-xs px-1.5 py-0">{pyqs.length}</span>}
                   </button>
-                  <button onClick={loadFlashcards}
-                    className={`flex-1 py-3 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${activeTab === 'flashcards' ? 'text-[#22c55e] border-b-2 border-[#22c55e] bg-[#22c55e]/5' : 'text-[#8888aa] hover:text-white'}`}>
-                    <Layers size={13} /> Flashcards
+                  <button onClick={loadVideos}
+                    className={`flex-1 py-3 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${activeTab === 'videos' ? 'text-[#06b6d4] border-b-2 border-[#06b6d4] bg-[#06b6d4]/5' : 'text-[#8888aa] hover:text-white'}`}>
+                    <FileText size={13} /> Videos {videos.length > 0 && <span className="badge badge-primary text-xs px-1.5 py-0">{videos.length}</span>}
                   </button>
                 </div>
 
-                <div className="p-5 overflow-y-auto max-h-[560px]">
-                  {loadingContent ? (
+                {/* Content */}
+                <div className="flex-1 p-5 overflow-y-auto">
+                  {loadingContent || loadingVideos ? (
                     <div className="flex flex-col items-center justify-center py-16 gap-3">
                       <Loader2 size={28} className="spinner text-[#6c63ff]" />
                       <p className="text-[#8888aa] text-sm">
-                        {activeTab === 'pyqs' ? 'Fetching all PYQs from 1979–2024...' : activeTab === 'overview' ? 'Generating complete chapter overview...' : 'Creating flashcards...'}
+                        {activeTab === 'pyqs' ? 'Fetching all PYQs from 1979–2024...' : 'Finding best YouTube videos...'}
                       </p>
                     </div>
-                  ) : activeTab === 'overview' ? (
-                    overview ? (
-                      <div className="markdown-content text-sm leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: renderMarkdown(overview) }} />
-                    ) : null
-
                   ) : activeTab === 'pyqs' ? (
                     pyqs.length === 0 ? (
                       <div className="text-center py-10 text-[#8888aa]">
@@ -233,7 +269,6 @@ export default function NCERTPage() {
                       </div>
                     ) : (
                       <div className="space-y-6">
-                        {/* Stats */}
                         <div className="grid grid-cols-3 gap-3">
                           <div className="bg-[#1a1a28] rounded-xl p-3 text-center border border-[#2a2a3d]">
                             <div className="text-xl font-black text-[#6c63ff]">{prelims.length}</div>
@@ -249,7 +284,6 @@ export default function NCERTPage() {
                           </div>
                         </div>
 
-                        {/* Prelims */}
                         {prelims.length > 0 && (
                           <div>
                             <h3 className="font-bold text-sm text-[#6c63ff] mb-3 flex items-center gap-2">
@@ -299,90 +333,36 @@ export default function NCERTPage() {
                             </div>
                           </div>
                         )}
-
-                        {/* Mains */}
-                        {mains.length > 0 && (
-                          <div>
-                            <h3 className="font-bold text-sm text-[#f97316] mb-3 flex items-center gap-2">
-                              <FileText size={14} /> UPSC Mains Questions
-                            </h3>
-                            <div className="space-y-3">
-                              {mains.map((q, i) => (
-                                <div key={i} className="bg-[#1a1a28] rounded-xl border border-[#2a2a3d] p-4">
-                                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                    {q.year > 0 && <span className="badge badge-gold text-xs">{q.year}</span>}
-                                    {q.year === 0 && <span className="badge badge-primary text-xs">Expected</span>}
-                                    <span className="badge text-xs" style={{ background: '#f9731620', color: '#f97316', border: '1px solid #f9731640' }}>{q.paper || 'GS Mains'}</span>
-                                  </div>
-                                  <p className="text-sm font-medium mb-3 leading-relaxed">{q.question}</p>
-                                  <div className="bg-[#0a0a0f] rounded-lg p-3 border border-[#2a2a3d]">
-                                    <p className="text-xs font-semibold text-[#f97316] mb-1">💡 How to approach:</p>
-                                    <p className="text-xs text-[#8888aa] leading-relaxed">{q.explanation}</p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Expected */}
-                        {expected.length > 0 && (
-                          <div>
-                            <h3 className="font-bold text-sm text-[#f5c842] mb-3 flex items-center gap-2">
-                              <AlertCircle size={14} /> High-Probability Expected Questions
-                            </h3>
-                            <div className="space-y-3">
-                              {expected.map((q, i) => (
-                                <div key={i} className="bg-[#1a1a28] rounded-xl border border-[#f5c842]/20 p-4">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <span className="badge badge-gold text-xs">Expected</span>
-                                    <span className={`badge text-xs ${q.difficulty === 'easy' ? 'badge-green' : q.difficulty === 'hard' ? 'badge-red' : 'badge-gold'}`}>{q.difficulty}</span>
-                                  </div>
-                                  <p className="text-sm font-medium leading-snug">{q.question}</p>
-                                  {q.options?.length > 0 && (
-                                    <div className="mt-2 space-y-1">
-                                      {q.options.map((opt, oi) => (
-                                        <p key={oi} className={`text-xs p-2 rounded-lg ${opt === q.correctAnswer ? 'bg-green-500/10 text-green-400 border border-green-500/30' : 'text-[#8888aa]'}`}>{opt}</p>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )
-
                   ) : (
-                    // Flashcards
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {flashcards.map((card, i) => (
-                        <div key={i} onClick={() => {
-                          setFlippedCards(prev => {
-                            const next = new Set(prev);
-                            next.has(i) ? next.delete(i) : next.add(i);
-                            return next;
-                          });
-                        }} className="cursor-pointer rounded-xl border border-[#2a2a3d] hover:border-[#22c55e] transition-all overflow-hidden min-h-[110px]">
-                          <div className={`p-4 h-full ${flippedCards.has(i) ? 'bg-[#22c55e]/10' : 'bg-[#1a1a28]'}`}>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className={`badge text-xs ${card.difficulty === 'easy' ? 'badge-green' : card.difficulty === 'hard' ? 'badge-red' : 'badge-gold'}`}>{card.difficulty}</span>
-                              <RotateCcw size={12} className="text-[#8888aa]" />
+                    videos.length === 0 ? (
+                      <div className="text-center py-10 text-[#8888aa]">
+                        <FileText size={32} className="mx-auto mb-3 opacity-40" />
+                        <p>Click the Videos tab to load YouTube resources</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {videos.map((video, i) => (
+                          <a key={i} href={video.url} target="_blank" rel="noopener noreferrer"
+                            className="block p-4 bg-[#1a1a28] rounded-xl border border-[#2a2a3d] hover:border-[#06b6d4] transition-all group">
+                            <div className="flex items-start justify-between gap-3 mb-2">
+                              <div>
+                                <h3 className="font-semibold text-sm group-hover:text-[#06b6d4] transition">{video.title}</h3>
+                                <p className="text-xs text-[#8888aa] mt-1">{video.channel} • {video.duration}</p>
+                              </div>
+                              <span className={`badge text-xs flex-shrink-0 ${
+                                video.quality === 'excellent' ? 'badge-green' : video.quality === 'good' ? 'badge-gold' : 'badge-primary'
+                              }`}>{video.quality}</span>
                             </div>
-                            {flippedCards.has(i) ? (
-                              <p className="text-sm text-[#22c55e] font-medium">{card.back}</p>
-                            ) : (
-                              <p className="text-sm font-semibold">{card.front}</p>
-                            )}
-                            <p className="text-xs text-[#8888aa] mt-2">{flippedCards.has(i) ? '✅ Answer' : '👆 Click to reveal'}</p>
-                          </div>
-                        </div>
-                      ))}
-                      {flashcards.length === 0 && (
-                        <div className="col-span-2 text-center text-[#8888aa] py-8">Click Flashcards tab to load</div>
-                      )}
-                    </div>
+                            <p className="text-xs text-[#c0c0d0]">{video.description}</p>
+                            <div className="mt-3 flex items-center gap-2 text-[#06b6d4] text-xs font-semibold group-hover:gap-3 transition-all">
+                              Watch on YouTube <ChevronRight size={12} />
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    )
                   )}
                 </div>
               </div>
@@ -395,7 +375,7 @@ export default function NCERTPage() {
         <div className="glass p-12 text-center">
           <BookOpen size={48} className="text-[#6c63ff] mx-auto mb-4 opacity-50" />
           <h3 className="text-xl font-bold mb-2">Choose a Subject to Begin</h3>
-          <p className="text-[#8888aa]">Select any subject above to explore chapters with AI overview, PYQs from 1979–2024, and flashcards</p>
+          <p className="text-[#8888aa]">Select any subject above to explore chapters with PYQs and YouTube videos</p>
         </div>
       )}
     </div>

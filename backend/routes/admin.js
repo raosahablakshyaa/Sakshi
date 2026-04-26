@@ -4,10 +4,52 @@ const User = require('../models/User');
 const Question = require('../models/Question');
 const Progress = require('../models/Progress');
 const CurrentAffairs = require('../models/CurrentAffairs');
+const Activity = require('../models/Activity');
 const { protect, adminOnly } = require('../middleware/auth');
 
 // All admin routes require auth + admin role
 router.use(protect, adminOnly);
+
+// Get all students with analytics
+router.get('/students', async (req, res) => {
+  try {
+    const students = await User.find({ role: 'student', isActive: true })
+      .select('name email username currentClass totalQuestionsAttempted totalCorrect streak lastActiveDate')
+      .sort('-createdAt');
+    
+    res.json(students);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get live activity feed (last 20 activities)
+router.get('/activity-feed', async (req, res) => {
+  try {
+    const activities = await Activity.find()
+      .sort('-timestamp')
+      .limit(20)
+      .lean();
+    
+    res.json(activities);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get student activity (for specific student)
+router.get('/student-activity/:userId', async (req, res) => {
+  try {
+    const activities = await Activity.find({ userId: req.params.userId })
+      .sort('-timestamp')
+      .limit(50)
+      .lean();
+    
+    res.json(activities);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // Platform stats
 router.get('/stats', async (req, res) => {
@@ -70,6 +112,66 @@ router.get('/leaderboard', async (req, res) => {
       accuracy: u.totalQuestionsAttempted > 0 ? Math.round((u.totalCorrect / u.totalQuestionsAttempted) * 100) : 0,
       currentClass: u.currentClass
     })));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Chapter Videos Management
+let chapterVideos = [];
+
+// Get all chapter videos
+router.get('/chapter-videos', async (req, res) => {
+  try {
+    res.json(chapterVideos);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Add chapter video
+router.post('/chapter-videos', async (req, res) => {
+  try {
+    const { subject, class: cls, chapter, videoUrl, videoTitle } = req.body;
+    
+    if (!subject || !cls || !chapter || !videoUrl || !videoTitle) {
+      return res.status(400).json({ message: 'All fields required' });
+    }
+    
+    const video = { subject, class: cls, chapter, videoUrl, videoTitle };
+    chapterVideos.push(video);
+    
+    res.status(201).json(video);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Delete chapter video
+router.delete('/chapter-videos/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (id >= 0 && id < chapterVideos.length) {
+      chapterVideos.splice(id, 1);
+      res.json({ message: 'Video deleted' });
+    } else {
+      res.status(404).json({ message: 'Video not found' });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get videos for specific chapter
+router.get('/chapter-videos/:subject/:class/:chapter', async (req, res) => {
+  try {
+    const { subject, class: cls, chapter } = req.params;
+    const videos = chapterVideos.filter(v => 
+      v.subject.toLowerCase() === subject.toLowerCase() && 
+      v.class === parseInt(cls) && 
+      v.chapter.toLowerCase() === chapter.toLowerCase()
+    );
+    res.json(videos);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

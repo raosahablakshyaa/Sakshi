@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { interviewAPI } from '@/lib/api';
-import { Mic, MicOff, Play, ChevronRight, Loader2, Trophy, Lightbulb, CheckCircle } from 'lucide-react';
+import { Mic, MicOff, Play, ChevronRight, Loader2, Trophy, Lightbulb, CheckCircle, Volume2, VolumeX, BarChart3, AlertCircle } from 'lucide-react';
 
 interface InterviewState {
   started: boolean;
@@ -11,6 +11,7 @@ interface InterviewState {
 }
 
 interface Message { type: 'interviewer' | 'candidate' | 'feedback'; content: string; }
+interface Score { content: number; communication: number; confidence: number; }
 
 const TIPS = [
   { icon: '🧍', category: 'Body Language', tip: 'Sit straight, maintain eye contact, smile naturally' },
@@ -22,24 +23,73 @@ const TIPS = [
 ];
 
 export default function InterviewPage() {
-  const [state, setState] = useState<InterviewState>({ started: false, questionIndex: 0, totalQuestions: 15, complete: false });
+  const [state, setState] = useState<InterviewState>({ started: false, questionIndex: 0, totalQuestions: 16, complete: false });
   const [messages, setMessages] = useState<Message[]>([]);
   const [answer, setAnswer] = useState('');
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState('');
+  const [allAnswers, setAllAnswers] = useState<string[]>([]);
+  const [allScores, setAllScores] = useState<Score[]>([]);
+  const [analysis, setAnalysis] = useState('');
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  const speakText = (text: string) => {
+    if (!('speechSynthesis' in window)) {
+      alert('Voice not supported in your browser');
+      return;
+    }
+    
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.2;
+    utterance.pitch = 0.95;
+    utterance.volume = 1;
+    utterance.lang = 'en-IN';
+    
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    
+    synthRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+  };
 
   const startInterview = async () => {
     setLoading(true);
     try {
       const res = await interviewAPI.start();
       setState({ started: true, questionIndex: 0, totalQuestions: res.data.totalQuestions, complete: false });
+      setCurrentQuestion(res.data.question);
       setMessages([{ type: 'interviewer', content: res.data.message }]);
+      setAllAnswers([]);
+      setAllScores([]);
+      
+      setTimeout(() => speakText(res.data.question), 500);
     } catch { /* silent */ }
     finally { setLoading(false); }
+  };
+
+  const extractScores = (feedback: string): Score => {
+    const contentMatch = feedback.match(/Content:\s*(\d+)/);
+    const communicationMatch = feedback.match(/Communication:\s*(\d+)/);
+    const confidenceMatch = feedback.match(/Confidence:\s*(\d+)/);
+    
+    return {
+      content: contentMatch ? parseInt(contentMatch[1]) : 5,
+      communication: communicationMatch ? parseInt(communicationMatch[1]) : 5,
+      confidence: confidenceMatch ? parseInt(confidenceMatch[1]) : 5
+    };
   };
 
   const submitAnswer = async () => {
@@ -47,17 +97,40 @@ export default function InterviewPage() {
     const myAnswer = answer.trim();
     setAnswer('');
     setMessages(prev => [...prev, { type: 'candidate', content: myAnswer }]);
+    setAllAnswers(prev => [...prev, myAnswer]);
     setLoading(true);
     try {
       const res = await interviewAPI.answer({ answer: myAnswer, questionIndex: state.questionIndex });
       setMessages(prev => [...prev, { type: 'feedback', content: res.data.feedback }]);
+      
+      const scores = extractScores(res.data.feedback);
+      setAllScores(prev => [...prev, scores]);
+      
       if (res.data.isComplete) {
         setState(prev => ({ ...prev, complete: true }));
+        generateAnalysis([...allAnswers, myAnswer], [...allScores, scores]);
       } else {
         setState(prev => ({ ...prev, questionIndex: res.data.nextQuestionIndex }));
+        if (res.data.nextQuestion) {
+          setCurrentQuestion(res.data.nextQuestion);
+          setTimeout(() => speakText(res.data.nextQuestion), 1000);
+        }
       }
     } catch { /* silent */ }
     finally { setLoading(false); }
+  };
+
+  const generateAnalysis = async (answers: string[], scores: Score[]) => {
+    setLoadingAnalysis(true);
+    try {
+      const res = await interviewAPI.analysis({ answers, scores });
+      setAnalysis(res.data.analysis);
+    } catch (err) {
+      console.error('Error generating analysis:', err);
+      setAnalysis('Unable to generate analysis. Please try again.');
+    } finally {
+      setLoadingAnalysis(false);
+    }
   };
 
   const toggleVoice = () => {
@@ -86,6 +159,7 @@ export default function InterviewPage() {
 
   const renderContent = (text: string) => text
     .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#f0f0ff">$1</strong>')
+    .replace(/##\s+(.*?)\n/g, '<h3 style="color:#6c63ff; font-weight:bold; margin-top:12px; margin-bottom:8px;">$1</h3>')
     .replace(/\n/g, '<br/>');
 
   if (!state.started) {
@@ -95,7 +169,7 @@ export default function InterviewPage() {
           <h1 className="text-2xl font-black flex items-center gap-2">
             <Mic className="text-[#f97316]" size={24} /> AI Mock Interview
           </h1>
-          <p className="text-[#8888aa] text-sm mt-1">Simulate a real IAS Personality Test with AI feedback</p>
+          <p className="text-[#8888aa] text-sm mt-1">Simulate a real IAS Personality Test with AI feedback & voice</p>
         </div>
 
         {/* Hero card */}
@@ -105,10 +179,10 @@ export default function InterviewPage() {
           </div>
           <h2 className="text-2xl font-black mb-3">IAS Personality Test Simulation</h2>
           <p className="text-[#8888aa] mb-6 max-w-lg mx-auto">
-            Face a real UPSC-style interview panel. Get instant AI feedback on your answers, communication, and confidence. Build your interview skills from today!
+            Face a real UPSC-style interview panel with 16 questions including scenario-based challenges. AI will evaluate your answers and provide comprehensive analysis on communication, content, and confidence!
           </p>
           <div className="grid grid-cols-3 gap-4 mb-8 max-w-sm mx-auto">
-            {[['15', 'Questions'], ['AI', 'Feedback'], ['Real', 'UPSC Style']].map(([v, l]) => (
+            {[['16', 'Questions'], ['🎤 AI', 'Voice'], ['📊', 'Analysis']].map(([v, l]) => (
               <div key={l} className="bg-[#1a1a28] rounded-xl p-3 text-center">
                 <div className="text-xl font-black text-[#f97316]">{v}</div>
                 <div className="text-xs text-[#8888aa]">{l}</div>
@@ -154,12 +228,33 @@ export default function InterviewPage() {
       </div>
 
       {state.complete ? (
-        <div className="glass p-10 text-center">
-          <Trophy size={48} className="text-[#f5c842] mx-auto mb-4" />
-          <h2 className="text-2xl font-black mb-3">Interview Complete! 🎉</h2>
-          <p className="text-[#8888aa] mb-6">Great job completing your mock interview! Review the feedback above to improve.</p>
+        <div className="space-y-6">
+          {/* Completion Message */}
+          <div className="glass p-10 text-center">
+            <Trophy size={48} className="text-[#f5c842] mx-auto mb-4" />
+            <h2 className="text-2xl font-black mb-3">Interview Complete! 🎉</h2>
+            <p className="text-[#8888aa] mb-6">Excellent work! Your interview has been recorded and analyzed. Review your comprehensive feedback below.</p>
+          </div>
+
+          {/* Analysis Section */}
+          {loadingAnalysis ? (
+            <div className="glass p-10 text-center">
+              <Loader2 size={32} className="spinner text-[#6c63ff] mx-auto mb-3" />
+              <p className="text-[#8888aa]">Generating your comprehensive analysis...</p>
+            </div>
+          ) : analysis ? (
+            <div className="glass p-6 space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart3 size={20} className="text-[#6c63ff]" />
+                <h3 className="text-lg font-bold">📊 Interview Analysis & Feedback</h3>
+              </div>
+              <div className="bg-[#1a1a28] rounded-lg p-4 text-sm leading-relaxed text-[#c0c0d0] space-y-3" dangerouslySetInnerHTML={{ __html: renderContent(analysis) }} />
+            </div>
+          ) : null}
+
+          {/* Action Buttons */}
           <div className="flex gap-3 justify-center">
-            <button onClick={() => { setState({ started: false, questionIndex: 0, totalQuestions: 15, complete: false }); setMessages([]); }}
+            <button onClick={() => { setState({ started: false, questionIndex: 0, totalQuestions: 16, complete: false }); setMessages([]); setCurrentQuestion(''); setAllAnswers([]); setAllScores([]); setAnalysis(''); }}
               className="btn-primary py-3 px-8 flex items-center gap-2">
               <Play size={16} /> Practice Again
             </button>
@@ -167,6 +262,24 @@ export default function InterviewPage() {
         </div>
       ) : (
         <>
+          {/* Current Question Display */}
+          {currentQuestion && (
+            <div className="glass p-4 bg-gradient-to-r from-[#f97316]/10 to-[#f5c842]/10 border border-[#f97316]/30">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="text-xs text-[#8888aa] mb-2 uppercase tracking-wide">Current Question</div>
+                  <p className="text-lg font-semibold leading-relaxed">{currentQuestion}</p>
+                </div>
+                <button 
+                  onClick={() => isSpeaking ? stopSpeaking() : speakText(currentQuestion)}
+                  className={`p-3 rounded-lg flex-shrink-0 transition-all ${isSpeaking ? 'bg-red-500/20 text-red-400' : 'bg-[#f97316]/20 text-[#f97316] hover:bg-[#f97316]/30'}`}
+                >
+                  {isSpeaking ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Chat */}
           <div className="glass rounded-xl overflow-hidden">
             <div className="p-4 border-b border-[#2a2a3d] flex items-center gap-3">
@@ -175,7 +288,7 @@ export default function InterviewPage() {
               </div>
               <div>
                 <div className="font-bold text-sm">UPSC Interview Board</div>
-                <div className="text-xs text-[#8888aa]">AI-powered personality test simulation</div>
+                <div className="text-xs text-[#8888aa]">AI-powered personality test with voice & scenario questions</div>
               </div>
             </div>
 

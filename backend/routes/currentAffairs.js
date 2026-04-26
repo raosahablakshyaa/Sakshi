@@ -1,17 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const axios = require('axios');
 const { protect, adminOnly } = require('../middleware/auth');
 const CurrentAffairs = require('../models/CurrentAffairs');
-
-async function callGroq(prompt) {
-  const res = await axios.post(
-    'https://api.groq.com/openai/v1/chat/completions',
-    { model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.4, max_tokens: 2000 },
-    { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, timeout: 30000 }
-  );
-  return res.data.choices[0].message.content;
-}
+const { callAI } = require('../lib/aiUtils');
 
 async function generateTodayNews(today) {
   const dateObj = new Date(today);
@@ -33,35 +24,21 @@ Return a JSON array of exactly 8 articles:
   }
 ]
 
-Make the news realistic, factual-style, and highly relevant for UPSC preparation. Cover topics like:
-- Government schemes and policies
-- Economic indicators and RBI decisions  
-- India's foreign relations
-- Environment and climate
-- Science and technology in India
-- Social issues and welfare schemes
-- Constitutional and legal developments
-- Defence and security
+Make the news realistic, factual-style, and highly relevant for UPSC preparation. Return ONLY the JSON array, no other text.`;
 
-Return ONLY the JSON array, no other text.`;
-
-  const text = await callGroq(prompt);
-
-  const jsonMatch = text.match(/\[[\s\S]*\]/);
+  const result = await callAI(prompt, 2500);
+  const jsonMatch = result.text.match(/\[\s*\{[\s\S]*\}\s*\]/);
   if (!jsonMatch) throw new Error('Could not parse AI response');
   return JSON.parse(jsonMatch[0]);
 }
 
-// Get today's current affairs
 router.get('/today', protect, async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
 
-    // Return cached if already generated today
     const existing = await CurrentAffairs.find({ date: today, isActive: true }).sort('-createdAt');
     if (existing.length > 0) return res.json(existing);
 
-    // Generate fresh news with AI
     const articles = await generateTodayNews(today);
     const saved = await CurrentAffairs.insertMany(
       articles.map(a => ({ ...a, date: today, isActive: true }))
@@ -72,7 +49,6 @@ router.get('/today', protect, async (req, res) => {
   }
 });
 
-// Get current affairs by date range
 router.get('/', protect, async (req, res) => {
   try {
     const { from, to, category, limit = 20, page = 1 } = req.query;
@@ -94,7 +70,6 @@ router.get('/', protect, async (req, res) => {
   }
 });
 
-// Get quiz for a current affairs article
 router.get('/:id/quiz', protect, async (req, res) => {
   try {
     const article = await CurrentAffairs.findById(req.params.id);
@@ -107,11 +82,10 @@ Summary: ${article.summary}
 UPSC Relevance: ${article.upscRelevance}
 
 Generate 3 UPSC-style MCQ questions. Return ONLY a JSON array:
-[{"question":"...","options":["A) ...","B) ...","C) ...","D) ..."],"correctAnswer":"A) ...","explanation":"..."}]`;
+[{"question":"...","options":["A) option1","B) option2","C) option3","D) option4"],"correctAnswer":"A) option1","explanation":"..."}]`;
 
-    const text = await callGroq(prompt);
-
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    const result = await callAI(prompt, 1500);
+    const jsonMatch = result.text.match(/\[\s*\{[\s\S]*\}\s*\]/);
     if (jsonMatch) {
       article.quiz = JSON.parse(jsonMatch[0]);
       await article.save();
@@ -122,7 +96,6 @@ Generate 3 UPSC-style MCQ questions. Return ONLY a JSON array:
   }
 });
 
-// Force regenerate today's news (admin)
 router.post('/regenerate', protect, adminOnly, async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
@@ -137,7 +110,6 @@ router.post('/regenerate', protect, adminOnly, async (req, res) => {
   }
 });
 
-// Admin: Add manually
 router.post('/', protect, adminOnly, async (req, res) => {
   try {
     const article = await CurrentAffairs.create(req.body);

@@ -1,22 +1,22 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { aiAPI } from '@/lib/api';
-import { Send, Bot, Loader2, Bookmark, BookmarkCheck, Plus, Mic, MicOff, Sparkles } from 'lucide-react';
+import { Send, Loader2, Plus, Mic, MicOff, Sparkles, MessageSquare, Clock } from 'lucide-react';
 
 interface Message { role: 'user' | 'assistant'; content: string; timestamp?: Date; }
 interface Session { sessionId: string; subject?: string; preview: string; messageCount: number; isBookmarked: boolean; createdAt: string; }
 
 const QUICK_PROMPTS = [
-  'Mujhe Class 7 se IAS tak ka complete roadmap do',
-  'French Revolution explain karo UPSC angle ke saath',
-  'Indian Constitution ki Preamble ka deep analysis karo',
-  'UPSC Mains answer writing kaise karein?',
-  'Maurya Empire aur uski UPSC relevance',
-  'GDP, GNP aur NNP mein difference kya hai?',
-  'Climate Change ke UPSC mains questions kaise solve karein?',
-  'Fundamental Rights vs Directive Principles â€” difference aur importance',
-  'Daily study schedule kaise banayein IAS ke liye?',
-  'Current Affairs ko UPSC answer mein kaise use karein?',
+  'Class 7 se IAS tak roadmap',
+  'French Revolution - UPSC angle',
+  'Constitution Preamble analysis',
+  'UPSC Mains answer writing',
+  'Maurya Empire relevance',
+  'GDP vs GNP vs NNP',
+  'Climate Change - Mains questions',
+  'Fundamental Rights vs Directive Principles',
+  'Daily study schedule',
+  'Current Affairs in answers',
 ];
 
 const SUBJECTS = ['General', 'History', 'Geography', 'Polity', 'Economics', 'Science', 'Environment', 'Current Affairs', 'Ethics', 'Essay'];
@@ -140,87 +140,117 @@ Sakshi, **IAS banana ek marathon hai, sprint nahi.** Aaj ka pehla sawaal pooch â
   };
 
   return (
-    <div className="flex h-[calc(100vh-48px)] gap-4 max-w-7xl">
-      {/* Sessions sidebar */}
-      <div className={`${showSessions ? 'flex' : 'hidden'} md:flex flex-col w-64 glass rounded-xl overflow-hidden flex-shrink-0`}>
-        <div className="p-4 border-b border-[#2a2a3d] flex items-center justify-between">
-          <span className="font-semibold text-sm">Chat History</span>
-          <button onClick={startNewChat} className="btn-primary text-xs py-1 px-3 flex items-center gap-1">
-            <Plus size={12} /> New
+    <div className="flex h-[calc(100vh-48px)] gap-0 max-w-7xl">
+      {/* Sidebar */}
+      <div className={`${showSessions ? 'flex' : 'hidden'} md:flex flex-col w-64 bg-gradient-to-b from-[#0f0f1a] to-[#1a1a28] border-r border-[#2a2a3d] flex-shrink-0`}>
+        <div className="p-4 border-b border-[#2a2a3d]">
+          <button onClick={startNewChat} className="w-full bg-gradient-to-r from-[#6c63ff] to-[#a78bfa] hover:shadow-lg hover:shadow-[#6c63ff]/30 text-white font-semibold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition-all">
+            <Plus size={16} /> New Chat
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {sessions.map(s => (
-            <button key={s.sessionId} onClick={() => loadSession(s.sessionId)}
-              className={`w-full text-left p-3 rounded-lg text-xs transition-all hover:bg-[#1a1a28] ${sessionId === s.sessionId ? 'bg-[#1a1a28] border border-[#6c63ff]/30' : ''}`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="badge badge-primary text-xs">{s.subject || 'general'}</span>
-                {s.isBookmarked && <BookmarkCheck size={12} className="text-[#f5c842]" />}
-              </div>
-              <p className="text-[#8888aa] truncate">{s.preview}</p>
-              <p className="text-[#555] mt-1">{s.messageCount} messages</p>
-            </button>
-          ))}
-          {sessions.length === 0 && <p className="text-[#8888aa] text-xs p-3">No previous chats yet</p>}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {sessions.length === 0 ? (
+            <div className="text-center py-8 text-[#8888aa]">
+              <MessageSquare size={28} className="mx-auto mb-2 opacity-40" />
+              <p className="text-xs">No chats yet</p>
+            </div>
+          ) : (
+            sessions.map(s => (
+              <button key={s.sessionId} onClick={() => loadSession(s.sessionId)}
+                className={`w-full text-left p-3 rounded-lg transition-all text-xs ${sessionId === s.sessionId ? 'bg-[#6c63ff]/20 border border-[#6c63ff]/50' : 'hover:bg-[#2a2a3d] border border-transparent'}`}>
+                <p className="text-[#c0c0d0] font-medium truncate mb-1">{s.preview}</p>
+                <div className="flex items-center gap-1 text-[#555]">
+                  <Clock size={10} />
+                  <span>{s.messageCount} messages</span>
+                </div>
+              </button>
+            ))
+          )}
         </div>
       </div>
 
-      {/* Main chat */}
-      <div className="flex-1 flex flex-col glass rounded-xl overflow-hidden">
+      {/* Main Chat */}
+      <div className="flex-1 flex flex-col bg-[#0f0f1a]">
         {/* Header */}
-        <div className="p-4 border-b border-[#2a2a3d] flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="px-6 py-4 border-b border-[#2a2a3d] flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <button onClick={() => setShowSessions(!showSessions)} className="md:hidden text-[#8888aa]">
-              <Bot size={20} />
+              <MessageSquare size={20} />
             </button>
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#6c63ff] to-[#a78bfa] flex items-center justify-center">
-              <Sparkles size={16} />
+            
+            {/* AI Mentor Profile Picture */}
+            <div className="relative">
+              <img 
+                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&q=80"
+                alt="Sakshi's Mentor"
+                className="w-12 h-12 rounded-full object-cover border-2 border-[#6c63ff] shadow-lg shadow-[#6c63ff]/30"
+              />
+              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-[#0f0f1a]"></div>
             </div>
+            
             <div>
               <div className="font-bold text-sm">Sakshi's Mentor</div>
               <div className="text-xs text-green-400 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-green-400 rounded-full inline-block" /> Online 24/7
+                <span className="w-1.5 h-1.5 bg-green-400 rounded-full" /> Online 24/7
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <select value={subject} onChange={e => setSubject(e.target.value)} className="input-field text-xs py-1 px-2 w-auto">
-              {SUBJECTS.map(s => <option key={s}>{s}</option>)}
-            </select>
-            <button onClick={startNewChat} className="btn-ghost text-xs py-1 px-3 flex items-center gap-1">
-              <Plus size={12} /> New Chat
-            </button>
-          </div>
+          <select value={subject} onChange={e => setSubject(e.target.value)} className="bg-[#1a1a28] border border-[#2a2a3d] text-[#c0c0d0] text-xs py-2 px-3 rounded-lg focus:border-[#6c63ff] outline-none">
+            {SUBJECTS.map(s => <option key={s}>{s}</option>)}
+          </select>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} gap-3`}>
+            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6c63ff] to-[#a78bfa] flex items-center justify-center flex-shrink-0 mt-1">
-                  <Sparkles size={14} />
+                <div className="flex items-start gap-3 max-w-xl">
+                  <img 
+                    src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=40&h=40&fit=crop&q=80"
+                    alt="Mentor"
+                    className="w-8 h-8 rounded-full object-cover border border-[#6c63ff] flex-shrink-0 mt-1"
+                  />
+                  <div className="max-w-xl">
+                    <div className="bg-[#1a1a28] text-[#c0c0d0] border border-[#2a2a3d] px-4 py-3 rounded-lg">
+                      <div
+                        className="text-sm leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: renderMessage(msg.content) }}
+                      />
+                    </div>
+                    {msg.timestamp && (
+                      <div className="text-xs text-[#8888aa] mt-1">
+                        {new Date(msg.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
-              <div className={msg.role === 'user' ? 'chat-user' : 'chat-ai'}>
-                <div
-                  className="text-sm leading-relaxed markdown-content"
-                  dangerouslySetInnerHTML={{ __html: renderMessage(msg.content) }}
-                />
-                {msg.timestamp && (
-                  <div className="text-xs opacity-50 mt-1">
-                    {new Date(msg.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+              {msg.role === 'user' && (
+                <div className="max-w-xl text-right">
+                  <div className="bg-[#6c63ff] text-white px-4 py-3 rounded-lg inline-block">
+                    <div
+                      className="text-sm leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: renderMessage(msg.content) }}
+                    />
                   </div>
-                )}
-              </div>
+                  {msg.timestamp && (
+                    <div className="text-xs text-[#8888aa] mt-1">
+                      {new Date(msg.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
           {loading && (
             <div className="flex justify-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6c63ff] to-[#a78bfa] flex items-center justify-center">
-                <Sparkles size={14} />
-              </div>
-              <div className="chat-ai flex items-center gap-2">
+              <img 
+                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=40&h=40&fit=crop&q=80"
+                alt="Mentor"
+                className="w-8 h-8 rounded-full object-cover border border-[#6c63ff] flex-shrink-0 mt-1"
+              />
+              <div className="bg-[#1a1a28] border border-[#2a2a3d] px-4 py-3 rounded-lg flex items-center gap-2">
                 <Loader2 size={14} className="spinner text-[#6c63ff]" />
                 <span className="text-sm text-[#8888aa]">Thinking...</span>
               </div>
@@ -229,12 +259,12 @@ Sakshi, **IAS banana ek marathon hai, sprint nahi.** Aaj ka pehla sawaal pooch â
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Quick prompts */}
-        <div className="px-4 py-2 border-t border-[#2a2a3d] overflow-x-auto">
+        {/* Quick Prompts */}
+        <div className="px-6 py-4 border-t border-[#2a2a3d] overflow-x-auto">
           <div className="flex gap-2 pb-1">
             {QUICK_PROMPTS.map(p => (
               <button key={p} onClick={() => sendMessage(p)}
-                className="flex-shrink-0 text-xs bg-[#1a1a28] border border-[#2a2a3d] hover:border-[#6c63ff] text-[#8888aa] hover:text-white px-3 py-1.5 rounded-full transition-all">
+                className="flex-shrink-0 text-xs bg-[#1a1a28] hover:bg-[#2a2a3d] border border-[#2a2a3d] hover:border-[#6c63ff] text-[#8888aa] hover:text-[#a78bfa] px-3 py-2 rounded-lg transition-all">
                 {p}
               </button>
             ))}
@@ -242,17 +272,18 @@ Sakshi, **IAS banana ek marathon hai, sprint nahi.** Aaj ka pehla sawaal pooch â
         </div>
 
         {/* Input */}
-        <div className="p-4 border-t border-[#2a2a3d]">
-          <div className="flex gap-2">
-            <button onClick={toggleVoice} className={`p-3 rounded-xl border transition-all ${isListening ? 'bg-red-500/20 border-red-500 text-red-400' : 'border-[#2a2a3d] text-[#8888aa] hover:border-[#6c63ff]'}`}>
+        <div className="px-6 py-4 border-t border-[#2a2a3d]">
+          <div className="flex gap-3">
+            <button onClick={toggleVoice} className={`p-2.5 rounded-lg border transition-all flex-shrink-0 ${isListening ? 'bg-red-500/20 border-red-500 text-red-400' : 'border-[#2a2a3d] text-[#8888aa] hover:border-[#6c63ff] hover:text-[#6c63ff]'}`}>
               {isListening ? <MicOff size={18} /> : <Mic size={18} />}
             </button>
             <input
               value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-              className="input-field flex-1" placeholder="Koi bhi sawaal pooch... (Ask anything!)"
+              className="flex-1 bg-[#1a1a28] border border-[#2a2a3d] text-[#c0c0d0] text-sm py-2.5 px-4 rounded-lg focus:border-[#6c63ff] outline-none transition-all" 
+              placeholder="Koi bhi sawaal pooch..."
             />
-            <button onClick={() => sendMessage()} disabled={!input.trim() || loading} className="btn-primary px-4 disabled:opacity-50">
+            <button onClick={() => sendMessage()} disabled={!input.trim() || loading} className="bg-gradient-to-r from-[#6c63ff] to-[#a78bfa] hover:shadow-lg hover:shadow-[#6c63ff]/30 text-white p-2.5 rounded-lg disabled:opacity-50 transition-all flex-shrink-0">
               <Send size={18} />
             </button>
           </div>

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
 const api = axios.create({ baseURL: API_URL, withCredentials: true });
 
@@ -46,6 +46,7 @@ export const aiAPI = {
 // Questions
 export const questionsAPI = {
   daily: (params?: object) => api.get('/questions/daily', { params }),
+  aiGenerated: (params?: object) => api.get('/questions/ai-generated', { params }),
   list: (params?: object) => api.get('/questions', { params }),
   submit: (data: object) => api.post('/questions/submit', data),
   add: (data: object) => api.post('/questions', data),
@@ -62,6 +63,7 @@ export const ncertAPI = {
   summary: (data: object) => api.post('/ncert/summary', data),
   flashcards: (data: object) => api.post('/ncert/flashcards', data),
   pyqs: (data: object) => api.post('/ncert/pyqs', data),
+  youtubeVideos: (data: object) => api.post('/ncert/youtube-videos', data),
 };
 
 // Current Affairs
@@ -70,6 +72,7 @@ export const currentAffairsAPI = {
   list: (params?: object) => api.get('/currentaffairs', { params }),
   quiz: (id: string) => api.get(`/currentaffairs/${id}/quiz`),
   add: (data: object) => api.post('/currentaffairs', data),
+  regenerate: () => api.post('/currentaffairs/regenerate', {}),
 };
 
 // Progress

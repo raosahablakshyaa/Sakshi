@@ -21,6 +21,7 @@ app.use('/api/', limiter);
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/questions', require('./routes/questions'));
+app.use('/api/chapter-questions', require('./routes/chapterQuestions'));
 app.use('/api/ncert', require('./routes/ncert'));
 app.use('/api/currentaffairs', require('./routes/currentAffairs'));
 app.use('/api/progress', require('./routes/progress'));
