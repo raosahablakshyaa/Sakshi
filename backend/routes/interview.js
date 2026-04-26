@@ -18,7 +18,7 @@ const QUESTION_BANK = [
   "How would you handle a situation where your senior officer asks you to do something unethical?",
   "What do you understand by 'public service'?",
   "How do you think India can achieve its goal of becoming a developed nation by 2047?",
-  "What is your view on the importance of education in national development?",
+  "What do you understand by 'public service'?",
   "Tell us about a time when you showed leadership.",
   "What are your strengths and weaknesses?",
   "How do you stay updated with current affairs?",
@@ -76,22 +76,12 @@ Format your response as:
 **Scores:** Content: X/10 | Communication: X/10 | Confidence: X/10
 ${nextQuestion ? `**Next Question:** ${nextQuestion}` : '**Final Assessment:** [overall assessment]'}`;
 
-    let reply;
-    try {
-      const geminiRes = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-        { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.6, maxOutputTokens: 600 } },
-        { timeout: 25000 }
-      );
-      reply = geminiRes.data.candidates[0].content.parts[0].text;
-    } catch {
-      const groqRes = await axios.post(
-        'https://api.groq.com/openai/v1/chat/completions',
-        { model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: INTERVIEW_SYSTEM }, { role: 'user', content: prompt }], temperature: 0.6, max_tokens: 600 },
-        { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, timeout: 25000 }
-      );
-      reply = groqRes.data.choices[0].message.content;
-    }
+    const groqRes = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      { model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: INTERVIEW_SYSTEM }, { role: 'user', content: prompt }], temperature: 0.6, max_tokens: 600 },
+      { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, timeout: 25000 }
+    );
+    const reply = groqRes.data.choices[0].message.content;
 
     const isLast = !nextQuestion;
     if (isLast) {

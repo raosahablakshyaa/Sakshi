@@ -13,15 +13,6 @@ async function callGroq(prompt) {
   return res.data.choices[0].message.content;
 }
 
-async function callGemini(prompt) {
-  const res = await axios.post(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-    { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 2000 } },
-    { timeout: 30000 }
-  );
-  return res.data.candidates[0].content.parts[0].text;
-}
-
 async function generateTodayNews(today) {
   const dateObj = new Date(today);
   const dateStr = dateObj.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -54,9 +45,7 @@ Make the news realistic, factual-style, and highly relevant for UPSC preparation
 
 Return ONLY the JSON array, no other text.`;
 
-  let text;
-  try { text = await callGroq(prompt); }
-  catch { text = await callGemini(prompt); }
+  const text = await callGroq(prompt);
 
   const jsonMatch = text.match(/\[[\s\S]*\]/);
   if (!jsonMatch) throw new Error('Could not parse AI response');
@@ -120,9 +109,7 @@ UPSC Relevance: ${article.upscRelevance}
 Generate 3 UPSC-style MCQ questions. Return ONLY a JSON array:
 [{"question":"...","options":["A) ...","B) ...","C) ...","D) ..."],"correctAnswer":"A) ...","explanation":"..."}]`;
 
-    let text;
-    try { text = await callGroq(prompt); }
-    catch { text = await callGemini(prompt); }
+    const text = await callGroq(prompt);
 
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (jsonMatch) {

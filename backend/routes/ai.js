@@ -41,19 +41,6 @@ Always end responses with either:
 2. A specific action item Sakshi can do today, OR  
 3. A powerful one-line motivation rooted in real IAS topper stories`;
 
-async function callGemini(messages) {
-  const contents = messages.map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }]
-  }));
-  const res = await axios.post(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-    { contents, systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] }, generationConfig: { temperature: 0.7, maxOutputTokens: 1024 } },
-    { timeout: 30000 }
-  );
-  return res.data.candidates[0].content.parts[0].text;
-}
-
 async function callGroq(messages) {
   const res = await axios.post(
     'https://api.groq.com/openai/v1/chat/completions',
@@ -78,12 +65,7 @@ router.post('/chat', protect, async (req, res) => {
 
     const recentMessages = history.messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
 
-    let reply;
-    try {
-      reply = await callGemini(recentMessages);
-    } catch {
-      reply = await callGroq(recentMessages);
-    }
+    const reply = await callGroq(recentMessages);
 
     history.messages.push({ role: 'assistant', content: reply });
     await history.save();
@@ -140,12 +122,7 @@ router.post('/explain', protect, async (req, res) => {
   try {
     const { topic, subject, level = 'beginner' } = req.body;
     const prompt = `Explain "${topic}" from ${subject || 'general studies'} at ${level} level. Connect it to UPSC relevance if applicable. Keep it clear and engaging for a Class 7 student aspiring to be an IAS officer.`;
-    let reply;
-    try {
-      reply = await callGemini([{ role: 'user', content: prompt }]);
-    } catch {
-      reply = await callGroq([{ role: 'user', content: prompt }]);
-    }
+    const reply = await callGroq([{ role: 'user', content: prompt }]);
     res.json({ explanation: reply });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -156,12 +133,7 @@ router.post('/explain', protect, async (req, res) => {
 router.get('/motivation', protect, async (req, res) => {
   try {
     const prompt = `Give Sakshi (a Class 7 student dreaming of becoming an IAS officer) a powerful, personalized motivational message for today. Include: 1 inspiring quote, 1 IAS topper story snippet, and 1 actionable tip for today. Keep it warm, personal, and in Hinglish. Max 150 words.`;
-    let reply;
-    try {
-      reply = await callGemini([{ role: 'user', content: prompt }]);
-    } catch {
-      reply = await callGroq([{ role: 'user', content: prompt }]);
-    }
+    const reply = await callGroq([{ role: 'user', content: prompt }]);
     res.json({ motivation: reply });
   } catch (err) {
     res.status(500).json({ message: err.message });

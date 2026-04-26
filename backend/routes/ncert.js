@@ -61,22 +61,13 @@ const NCERT_STRUCTURE = {
   }
 };
 
-async function callAI(prompt, maxTokens = 2000) {
-  try {
-    const res = await axios.post(
-      'https://api.groq.com/openai/v1/chat/completions',
-      { model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.4, max_tokens: maxTokens },
-      { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, timeout: 30000 }
-    );
-    return res.data.choices[0].message.content;
-  } catch {
-    const res = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens } },
-      { timeout: 30000 }
-    );
-    return res.data.candidates[0].content.parts[0].text;
-  }
+async function callGroq(prompt, maxTokens = 2000) {
+  const res = await axios.post(
+    'https://api.groq.com/openai/v1/chat/completions',
+    { model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], temperature: 0.4, max_tokens: maxTokens },
+    { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, timeout: 30000 }
+  );
+  return res.data.choices[0].message.content;
 }
 
 // Get NCERT structure
@@ -97,38 +88,9 @@ router.get('/chapters', protect, (req, res) => {
 router.post('/overview', protect, async (req, res) => {
   try {
     const { subject, chapter, class: cls } = req.body;
-    const prompt = `You are an expert UPSC educator. Give a COMPLETE and DETAILED chapter overview for:
-Subject: ${subject} | Class: ${cls} | Chapter: "${chapter}"
+    const prompt = `You are an expert UPSC educator. Give a COMPLETE and DETAILED chapter overview for:\nSubject: ${subject} | Class: ${cls} | Chapter: "${chapter}"\n\nStructure your response EXACTLY like this:\n\n## 📖 Chapter Overview\n[3-4 lines explaining what this chapter is about and why it matters]\n\n## 🎯 What You Will Learn\n[5-6 bullet points of main learning outcomes]\n\n## 📚 Key Concepts & Explanations\n[Explain each major concept in 3-5 lines with examples. Cover ALL important topics from this chapter thoroughly]\n\n## 🔑 Important Facts & Dates\n[10-15 specific facts, dates, names, events that are frequently asked]\n\n## 🗺️ Mind Map / Chapter Flow\n[Show how concepts connect: Concept A → leads to → Concept B → results in → Concept C]\n\n## 🇮🇳 UPSC Relevance & GS Connection\n[Which GS Paper, which topics, how this chapter connects to UPSC Prelims and Mains]\n\n## ⚡ Quick Revision — 10 One-Liners\n[10 crisp one-line facts for last-minute revision]\n\n## 💡 Common Mistakes Students Make\n[3-4 common misconceptions or errors to avoid]\n\nBe thorough, detailed and exam-focused. This is for a serious IAS aspirant.`;
 
-Structure your response EXACTLY like this:
-
-## 📖 Chapter Overview
-[3-4 lines explaining what this chapter is about and why it matters]
-
-## 🎯 What You Will Learn
-[5-6 bullet points of main learning outcomes]
-
-## 📚 Key Concepts & Explanations
-[Explain each major concept in 3-5 lines with examples. Cover ALL important topics from this chapter thoroughly]
-
-## 🔑 Important Facts & Dates
-[10-15 specific facts, dates, names, events that are frequently asked]
-
-## 🗺️ Mind Map / Chapter Flow
-[Show how concepts connect: Concept A → leads to → Concept B → results in → Concept C]
-
-## 🇮🇳 UPSC Relevance & GS Connection
-[Which GS Paper, which topics, how this chapter connects to UPSC Prelims and Mains]
-
-## ⚡ Quick Revision — 10 One-Liners
-[10 crisp one-line facts for last-minute revision]
-
-## 💡 Common Mistakes Students Make
-[3-4 common misconceptions or errors to avoid]
-
-Be thorough, detailed and exam-focused. This is for a serious IAS aspirant.`;
-
-    const reply = await callAI(prompt, 3000);
+    const reply = await callGroq(prompt, 3000);
     res.json({ overview: reply, subject, chapter, class: cls });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -139,34 +101,9 @@ Be thorough, detailed and exam-focused. This is for a serious IAS aspirant.`;
 router.post('/pyqs', protect, async (req, res) => {
   try {
     const { subject, chapter, class: cls } = req.body;
-    const prompt = `You are a UPSC PYQ expert. Generate ALL important Previous Year Questions (PYQs) that have been asked from NCERT ${subject} Class ${cls} chapter "${chapter}" in UPSC Prelims and Mains exams from 1979 to 2024.
+    const prompt = `You are a UPSC PYQ expert. Generate ALL important Previous Year Questions (PYQs) that have been asked from NCERT ${subject} Class ${cls} chapter "${chapter}" in UPSC Prelims and Mains exams from 1979 to 2024.\n\nReturn ONLY a JSON array in this exact format:\n[\n  {\n    "year": 2019,\n    "exam": "UPSC Prelims",\n    "paper": "GS Paper 1",\n    "question": "Full question text here",\n    "options": ["A) option1", "B) option2", "C) option3", "D) option4"],\n    "correctAnswer": "A) option1",\n    "explanation": "Detailed explanation of why this answer is correct and what concept it tests",\n    "difficulty": "easy/medium/hard",\n    "topic": "specific topic within the chapter"\n  }\n]\n\nInclude:\n- UPSC Prelims MCQs (with options)\n- UPSC Mains questions (options array will be empty [], correctAnswer will be "Subjective")\n- State PSC questions if highly relevant\n- Questions from 1979 to 2024\n\nGenerate at least 15-20 questions. If fewer actual PYQs exist, add highly probable exam questions based on the chapter's importance. Mark those with year: 0 and exam: "Expected Question".\n\nReturn ONLY the JSON array, no other text.`;
 
-Return ONLY a JSON array in this exact format:
-[
-  {
-    "year": 2019,
-    "exam": "UPSC Prelims",
-    "paper": "GS Paper 1",
-    "question": "Full question text here",
-    "options": ["A) option1", "B) option2", "C) option3", "D) option4"],
-    "correctAnswer": "A) option1",
-    "explanation": "Detailed explanation of why this answer is correct and what concept it tests",
-    "difficulty": "easy/medium/hard",
-    "topic": "specific topic within the chapter"
-  }
-]
-
-Include:
-- UPSC Prelims MCQs (with options)
-- UPSC Mains questions (options array will be empty [], correctAnswer will be "Subjective")
-- State PSC questions if highly relevant
-- Questions from 1979 to 2024
-
-Generate at least 15-20 questions. If fewer actual PYQs exist, add highly probable exam questions based on the chapter's importance. Mark those with year: 0 and exam: "Expected Question".
-
-Return ONLY the JSON array, no other text.`;
-
-    const reply = await callAI(prompt, 3000);
+    const reply = await callGroq(prompt, 3000);
     const jsonMatch = reply.match(/\[[\s\S]*\]/);
     const pyqs = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
     res.json({ pyqs, subject, chapter, class: cls });
@@ -179,17 +116,8 @@ Return ONLY the JSON array, no other text.`;
 router.post('/summary', protect, async (req, res) => {
   try {
     const { subject, chapter, class: cls } = req.body;
-    const prompt = `Create a concise NCERT study summary for:
-Subject: ${subject} | Class: ${cls} | Chapter: "${chapter}"
-
-## Overview
-## Key Concepts
-## Important Facts
-## UPSC Connection
-## Quick Revision (5 points)
-
-Keep it crisp and exam-focused.`;
-    const reply = await callAI(prompt, 1500);
+    const prompt = `Create a concise NCERT study summary for:\nSubject: ${subject} | Class: ${cls} | Chapter: "${chapter}"\n\n## Overview\n## Key Concepts\n## Important Facts\n## UPSC Connection\n## Quick Revision (5 points)\n\nKeep it crisp and exam-focused.`;
+    const reply = await callGroq(prompt, 1500);
     res.json({ summary: reply, subject, chapter, class: cls });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -198,12 +126,9 @@ Keep it crisp and exam-focused.`;
 
 // Flashcards
 router.post('/flashcards', protect, async (req, res) => {
-  try {
-    const { subject, chapter, class: cls } = req.body;
-    const prompt = `Generate 10 high-quality flashcards for NCERT ${subject} Class ${cls} - "${chapter}".
-Focus on facts important for UPSC Prelims and school exams.
-Return ONLY a JSON array: [{"front": "question/term", "back": "answer/definition", "difficulty": "easy/medium/hard"}]`;
-    const reply = await callAI(prompt, 1500);
+  try {\n    const { subject, chapter, class: cls } = req.body;
+    const prompt = `Generate 10 high-quality flashcards for NCERT ${subject} Class ${cls} - "${chapter}".\nFocus on facts important for UPSC Prelims and school exams.\nReturn ONLY a JSON array: [{"front": "question/term", "back": "answer/definition", "difficulty": "easy/medium/hard"}]`;
+    const reply = await callGroq(prompt, 1500);
     const jsonMatch = reply.match(/\[[\s\S]*\]/);
     const flashcards = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
     res.json({ flashcards, subject, chapter });
