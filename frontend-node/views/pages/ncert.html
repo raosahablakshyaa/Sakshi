@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>NCERT Hub — Sakshi's Mentor</title>
+<link rel="stylesheet" href="/css/style.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+</head><body class="hero-bg">
+<div class="emoji-float" style="top:8%;left:3%;animation-delay:0s">📚</div>
+<div class="emoji-float" style="top:70%;left:93%;animation-delay:1.5s">🏛️</div>
+<button class="mobile-toggle" id="mobile-toggle">☰</button>
+<div class="overlay" id="overlay"></div>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main-content">
+<div class="space-y-6" style="max-width:1200px">
+  <div>
+    <h1 style="font-family:'Baloo 2',cursive;font-size:28px;font-weight:800;display:flex;align-items:center;gap:10px">📚 <span class="gradient-text">NCERT Learning Hub</span></h1>
+    <p style="color:var(--text-muted);font-size:14px;margin-top:6px;font-weight:600">Complete NCERT Class 6–12 with Wikipedia-powered Overview & All PYQs 🚀</p>
+  </div>
+
+  <!-- Study Resources -->
+  <div class="glass" style="padding:24px">
+    <div class="section-title">💡 External Study Resources</div>
+    <div class="grid grid-3" id="study-resources"></div>
+  </div>
+
+  <!-- Subject selector -->
+  <div class="glass" style="padding:24px">
+    <label style="font-size:13px;color:var(--text-muted);font-weight:700;display:block;margin-bottom:14px;text-transform:uppercase;letter-spacing:.5px">Select Subject</label>
+    <div class="grid grid-5" id="subject-grid"></div>
+    <div id="class-row" style="margin-top:16px;display:none">
+      <label style="font-size:14px;color:var(--text-muted);font-weight:600;display:block;margin-bottom:8px">Select Class</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap" id="class-btns"></div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1fr 2fr;gap:24px;display:none" id="chapter-area">
+    <!-- Chapter list -->
+    <div class="glass" style="border-radius:16px;overflow:hidden">
+      <div style="padding:16px;border-bottom:1px solid var(--border)">
+        <div style="font-weight:800;font-size:14px" id="ch-header">Chapters</div>
+        <div style="font-size:12px;color:var(--text-muted)" id="ch-count"></div>
+      </div>
+      <div style="overflow-y:auto;max-height:600px" id="chapter-list"></div>
+    </div>
+    <!-- Content -->
+    <div class="glass" style="border-radius:16px;overflow:hidden;display:flex;flex-direction:column" id="content-panel">
+      <div style="padding:40px;text-align:center;color:var(--text-muted)">
+        <div style="font-size:40px;margin-bottom:16px" class="float">✨</div>
+        <h3 style="font-weight:800;font-size:18px;margin-bottom:8px">Select a Chapter</h3>
+        <p style="font-size:14px">Click any chapter to load Wikipedia overview & all PYQs</p>
+      </div>
+    </div>
+  </div>
+  <style>
+  @media(max-width:768px){
+    #chapter-area{grid-template-columns:1fr !important}
+    #chapter-list{max-height:220px}
+    #content-panel{min-height:300px}
+    #tab-content{max-height:350px !important}
+  }
+  </style>
+</div>
+</main>
+<script src="/js/app.js"></script>
+<script>
+const SUBJECTS=[
+  {key:'history',label:'History',icon:'🏛️',color:'#f97316'},
+  {key:'geography',label:'Geography',icon:'🌍',color:'#22c55e'},
+  {key:'polity',label:'Political Science',icon:'⚖️',color:'#6c63ff'},
+  {key:'economics',label:'Economics',icon:'📊',color:'#f5c842'},
+  {key:'science',label:'Science',icon:'🔬',color:'#06b6d4'},
+];
+const CLASSES=[6,7,8,9,10,11,12];
+let selSubject='',selClass=7,selChapter=null,activeTab='overview';
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const RESOURCES=[
+    {title:'IAS Study Materials',desc:'Comprehensive free online notes for all UPSC subjects',icon:'📚',url:'https://www.clearias.com/ias-study-materials/',color:'rgba(99,102,241,.2)',border:'rgba(99,102,241,.3)'},
+    {title:'UPSC CSE Syllabus',desc:'Complete UPSC Civil Services Exam syllabus breakdown',icon:'📋',url:'https://www.clearias.com/upsc-cse-syllabus/',color:'rgba(139,92,246,.2)',border:'rgba(139,92,246,.3)'},
+    {title:'Previous Year Questions',desc:'UPSC IAS/IPS previous year question papers and solutions',icon:'🎯',url:'https://www.clearias.com/upsc-civil-services-exam-previous-year-question-papers-ias-ips/',color:'rgba(249,115,22,.2)',border:'rgba(249,115,22,.3)'},
+  ];
+  document.getElementById('study-resources').innerHTML=RESOURCES.map(r=>
+    `<a href="${r.url}" target="_blank" style="display:block;padding:16px;border-radius:12px;border:1px solid ${r.border};background:${r.color};text-decoration:none;transition:all .3s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+      <div style="font-size:28px;margin-bottom:8px">${r.icon}</div>
+      <h3 style="font-weight:700;font-size:14px;margin-bottom:4px">${r.title}</h3>
+      <p style="font-size:12px;color:var(--text-muted)">${r.desc}</p>
+      <div style="margin-top:12px;font-size:12px;color:#6c63ff;font-weight:600">Visit Resource →</div>
+    </a>`).join('');
+  document.getElementById('subject-grid').innerHTML=SUBJECTS.map(s=>`
+    <button onclick="selectSubject('${s.key}')" id="subj-${s.key}" style="padding:12px;border-radius:12px;border:1px solid var(--border);text-align:center;cursor:pointer;background:none;transition:all .2s">
+      <div style="font-size:24px;margin-bottom:4px">${s.icon}</div>
+      <div style="font-size:12px;font-weight:600;color:var(--text)">${s.label}</div>
+    </button>`).join('');
+  document.getElementById('class-btns').innerHTML=CLASSES.map(c=>`
+    <button onclick="selectClass(${c})" id="cls-${c}" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);font-size:14px;font-weight:600;cursor:pointer;background:${c===7?'var(--primary)':'none'};color:${c===7?'white':'var(--text-muted)'};transition:all .2s">Class ${c}</button>`).join('');
+});
+
+function selectSubject(key){
+  selSubject=key;
+  SUBJECTS.forEach(s=>{
+    const b=document.getElementById(`subj-${s.key}`);
+    b.style.borderColor=s.key===key?'var(--primary)':'var(--border)';
+    b.style.background=s.key===key?'rgba(124,111,255,.15)':'none';
+    b.style.transform=s.key===key?'scale(1.05)':'scale(1)';
+    b.style.boxShadow=s.key===key?'0 4px 15px rgba(124,111,255,.3)':'none';
+  });
+  document.getElementById('class-row').style.display='block';
+  loadChapters();
+}
+
+function selectClass(c){
+  selClass=c;
+  CLASSES.forEach(cl=>{
+    const b=document.getElementById(`cls-${cl}`);
+    b.style.background=cl===c?'linear-gradient(135deg,#7c6fff,#ff4081)':'none';
+    b.style.color=cl===c?'white':'var(--text-muted)';
+    b.style.borderColor=cl===c?'transparent':'var(--border)';
+    b.style.transform=cl===c?'scale(1.05)':'scale(1)';
+  });
+  loadChapters();
+}
+
+async function loadChapters(){
+  document.getElementById('chapter-area').style.display='grid';
+  document.getElementById('chapter-list').innerHTML=loading('Loading chapters...');
+  try{
+    const data=await api('GET',`/ncert/chapters?subject=${selSubject}&class=${selClass}`);
+    const subj=SUBJECTS.find(s=>s.key===selSubject);
+    document.getElementById('ch-header').textContent=`${subj?.label} — Class ${selClass}`;
+    document.getElementById('ch-count').textContent=`${data.chapters.length} chapters`;
+    document.getElementById('chapter-list').innerHTML=data.chapters.map(ch=>`
+      <button onclick="loadChapter(${ch.index},'${ch.title.replace(/'/g,"\\'")}',this)" style="width:100%;text-align:left;padding:12px;border-bottom:1px solid var(--border);background:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .2s" onmouseover="this.style.background='var(--bg-card2)'" onmouseout="if(!this.classList.contains('active'))this.style.background='none'">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:12px;color:var(--text-muted);width:24px;flex-shrink:0">${ch.index}</span>
+          <span style="font-size:14px;line-height:1.4;color:#ffffff;font-weight:600">${ch.title}</span>
+        </div>
+        <span style="color:var(--text-muted);flex-shrink:0">›</span>
+      </button>`).join('');
+  }catch{document.getElementById('chapter-list').innerHTML='<p style="padding:16px;color:var(--text-muted);font-size:14px">Failed to load chapters</p>';}
+}
+
+async function loadChapter(idx,title,btn){
+  selChapter={index:idx,title};
+  document.querySelectorAll('#chapter-list button').forEach(b=>{b.style.background='none';b.style.borderLeft='none';});
+  btn.style.background='var(--bg-card2)';btn.style.borderLeft='2px solid var(--primary)';
+  activeTab='overview';
+  const panel=document.getElementById('content-panel');
+  panel.innerHTML=`
+    <div style="padding:16px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <span class="badge badge-primary">Chapter ${idx}</span>
+        <span class="badge badge-green">${SUBJECTS.find(s=>s.key===selSubject)?.label} • Class ${selClass}</span>
+      </div>
+      <h2 style="font-weight:900;font-size:16px;margin-bottom:12px">${title}</h2>
+      <a href="https://ncert.nic.in/textbook.php" target="_blank" class="btn-primary w-full" style="justify-content:center;font-size:14px;padding:8px">📄 Download NCERT PDF</a>
+    </div>
+    <div style="display:flex;border-bottom:1px solid var(--border)">
+      <button onclick="setTab('overview',this)" id="tab-overview" style="flex:1;padding:12px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:#a78bfa;border-bottom:2px solid #a78bfa">✨ Overview</button>
+      <button onclick="setTab('pyqs',this)" id="tab-pyqs" style="flex:1;padding:12px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--text-muted)">🏆 PYQs</button>
+      <button onclick="setTab('videos',this)" id="tab-videos" style="flex:1;padding:12px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--text-muted)">🎬 Videos</button>
+    </div>
+    <div id="tab-content" style="flex:1;padding:20px;overflow-y:auto;max-height:500px">${loading('Generating Wikipedia-powered overview & fetching all PYQs...')}</div>`;
+
+  try{
+    const [ovRes,pyqRes]=await Promise.allSettled([
+      api('POST','/ncert/overview',{subject:selSubject,chapter:title,class:selClass}),
+      api('POST','/ncert/pyqs',{subject:selSubject,chapter:title,class:selClass})
+    ]);
+    window._overview=ovRes.status==='fulfilled'?ovRes.value.overview:'';
+    window._pyqs=pyqRes.status==='fulfilled'?pyqRes.value.pyqs:[];
+    window._videos=null;
+    renderTab('overview');
+  }catch{document.getElementById('tab-content').innerHTML='<p style="color:var(--text-muted)">Failed to load content</p>';}
+}
+
+function setTab(tab,btn){
+  activeTab=tab;
+  ['overview','pyqs','videos'].forEach(t=>{
+    const b=document.getElementById(`tab-${t}`);
+    if(b){b.style.color='var(--text-muted)';b.style.borderBottom='none';}
+  });
+  const colors={overview:'#a78bfa',pyqs:'#f5c842',videos:'#06b6d4'};
+  btn.style.color=colors[tab];btn.style.borderBottom=`2px solid ${colors[tab]}`;
+  renderTab(tab);
+}
+
+async function renderTab(tab){
+  const el=document.getElementById('tab-content');
+  if(tab==='overview'){
+    el.innerHTML=window._overview?`<div style="color:var(--text-muted);font-size:14px;line-height:1.8">${renderMd(window._overview)}</div>`:'<p style="color:var(--text-muted)">No overview available</p>';
+  } else if(tab==='pyqs'){
+    const pyqs=window._pyqs||[];
+    if(!pyqs.length){el.innerHTML='<p style="color:var(--text-muted)">No PYQs found</p>';return;}
+    const prelims=pyqs.filter(q=>q.options?.length>0&&q.correctAnswer!=='Subjective');
+    const mains=pyqs.filter(q=>q.correctAnswer==='Subjective');
+    const expected=pyqs.filter(q=>q.year===0);
+    el.innerHTML=`
+      <div class="grid grid-3" style="margin-bottom:16px">
+        <div style="background:var(--bg-card2);border-radius:12px;padding:12px;text-align:center;border:1px solid var(--border)"><div style="font-size:20px;font-weight:900;color:#6c63ff">${prelims.length}</div><div style="font-size:12px;color:var(--text-muted)">Prelims MCQs</div></div>
+        <div style="background:var(--bg-card2);border-radius:12px;padding:12px;text-align:center;border:1px solid var(--border)"><div style="font-size:20px;font-weight:900;color:#f97316">${mains.length}</div><div style="font-size:12px;color:var(--text-muted)">Mains Questions</div></div>
+        <div style="background:var(--bg-card2);border-radius:12px;padding:12px;text-align:center;border:1px solid var(--border)"><div style="font-size:20px;font-weight:900;color:#f5c842">${expected.length}</div><div style="font-size:12px;color:var(--text-muted)">Expected Qs</div></div>
+      </div>
+      ${prelims.length?`<h3 style="font-size:14px;font-weight:700;color:#6c63ff;margin-bottom:12px">📝 UPSC Prelims MCQs</h3>
+      <div id="pyq-list">${prelims.map((q,i)=>renderPYQ(q,i)).join('')}</div>`:''}
+      ${mains.length?`<h3 style="font-size:14px;font-weight:700;color:#f97316;margin:16px 0 12px">✍️ Mains Questions</h3>
+      ${mains.map((q,i)=>renderPYQ(q,i+1000)).join('')}`:''}`;
+  } else if(tab==='videos'){
+    if(!window._videos){
+      el.innerHTML=loading('Finding videos...');
+      try{const r=await api('POST','/ncert/youtube-videos',{subject:selSubject,chapter:selChapter.title,class:selClass});window._videos=r.videos;}
+      catch{window._videos=[];}
+    }
+    el.innerHTML=(window._videos||[]).map(v=>`
+      <a href="${v.url}" target="_blank" style="display:block;padding:16px;background:var(--bg-card2);border-radius:12px;border:1px solid var(--border);margin-bottom:12px;text-decoration:none;transition:all .2s" onmouseover="this.style.borderColor='#06b6d4'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div><h3 style="font-weight:600;font-size:14px">${v.title}</h3><p style="font-size:12px;color:var(--text-muted);margin-top:4px">${v.channel} • ${v.duration}</p></div>
+          <span class="badge ${v.quality==='excellent'?'badge-green':'badge-gold'}" style="flex-shrink:0">${v.quality}</span>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted)">${v.description}</p>
+        <div style="margin-top:8px;font-size:12px;color:#06b6d4;font-weight:600">Watch on YouTube →</div>
+      </a>`).join('')||'<p style="color:var(--text-muted)">No videos found</p>';
+  }
+}
+
+function renderPYQ(q,i){
+  return `<div style="background:var(--bg-card2);border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:8px">
+    <button onclick="togglePYQ(${i})" style="width:100%;text-align:left;padding:16px;background:none;border:none;cursor:pointer">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+        <div style="flex:1">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+            ${q.year>0?`<span class="badge badge-gold">${q.year}</span>`:'<span class="badge badge-primary">Expected</span>'}
+            <span class="badge badge-primary">${q.paper||'GS Paper 1'}</span>
+            <span class="badge ${q.difficulty==='easy'?'badge-green':q.difficulty==='hard'?'badge-red':'badge-gold'}">${q.difficulty}</span>
+          </div>
+          <p style="font-size:14px;font-weight:500;line-height:1.5;color:var(--text)">${q.question}</p>
+        </div>
+        <span style="color:var(--text-muted);flex-shrink:0" id="pyq-arrow-${i}">›</span>
+      </div>
+    </button>
+    <div id="pyq-body-${i}" style="display:none;padding:0 16px 16px;border-top:1px solid var(--border)">
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px" id="pyq-opts-${i}">
+        ${(q.options||[]).map((opt,oi)=>`<button onclick="answerPYQ(${i},'${opt.replace(/'/g,"\\'")}','${q.correctAnswer.replace(/'/g,"\\'")}',this)" style="width:100%;text-align:left;font-size:12px;padding:10px;border-radius:8px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--text);transition:all .2s">${opt}</button>`).join('')}
+      </div>
+      <div id="pyq-exp-${i}" style="display:none;background:var(--bg);border-radius:8px;padding:12px;margin-top:8px;border:1px solid var(--border)">
+        <p style="font-size:12px;font-weight:600;color:#a78bfa;margin-bottom:4px">✅ Correct: ${q.correctAnswer}</p>
+        <p style="font-size:12px;color:var(--text-muted);line-height:1.6">${q.explanation}</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+function togglePYQ(i){
+  const body=document.getElementById(`pyq-body-${i}`);
+  const arrow=document.getElementById(`pyq-arrow-${i}`);
+  const show=body.style.display==='none';
+  body.style.display=show?'block':'none';
+  arrow.textContent=show?'⌄':'›';
+}
+
+function answerPYQ(i,selected,correct,btn){
+  document.querySelectorAll(`#pyq-opts-${i} button`).forEach(b=>{
+    const txt=b.textContent.trim();
+    if(txt===correct){b.style.borderColor='#22c55e';b.style.background='rgba(34,197,94,.1)';b.style.color='#22c55e';}
+    else if(txt===selected&&txt!==correct){b.style.borderColor='#ef4444';b.style.background='rgba(239,68,68,.1)';b.style.color='#ef4444';}
+    b.disabled=true;
+  });
+  document.getElementById(`pyq-exp-${i}`).style.display='block';
+}
+</script>
+</body></html>

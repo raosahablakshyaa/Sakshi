@@ -149,6 +149,11 @@ env/
 .idea/
 *.code-workspace
 
+# Frontend-node specific
+frontend-node/node_modules/
+frontend-node/.env
+frontend-node/logs/
+
 # Frontend specific
 frontend/.next/
 frontend/out/

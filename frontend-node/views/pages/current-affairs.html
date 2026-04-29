@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Current Affairs — Sakshi's Mentor</title>
+<link rel="stylesheet" href="/css/style.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+</head><body class="hero-bg">
+<div class="emoji-float" style="top:8%;left:3%;animation-delay:0s">📰</div>
+<div class="emoji-float" style="top:65%;left:93%;animation-delay:1s">🌍</div>
+<button class="mobile-toggle" id="mobile-toggle">☰</button>
+<div class="overlay" id="overlay"></div>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main-content">
+<div class="space-y-6" style="max-width:1200px">
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <h1 style="font-family:'Baloo 2',cursive;font-size:28px;font-weight:800;display:flex;align-items:center;gap:10px">📰 <span class="gradient-text">Current Affairs</span></h1>
+      <p style="color:var(--text-muted);font-size:14px;margin-top:6px;font-weight:600">Aaj ki important news — UPSC ke liye simplified 🌟</p>
+    </div>
+    <button onclick="loadToday()" class="btn-primary" style="font-size:13px;padding:10px 20px">🔄 Refresh</button>
+  </div>
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:24px" id="ca-grid">
+    <div>
+      <div style="font-size:12px;color:var(--text-muted);font-weight:600;text-transform:uppercase;margin-bottom:12px" id="date-label"></div>
+      <div id="articles-list"></div>
+    </div>
+    <div id="article-detail">
+      <div class="glass" style="padding:40px;text-align:center">
+        <div style="font-size:40px;margin-bottom:16px" class="float">📰</div>
+        <h3 style="font-weight:800;margin-bottom:8px;font-family:'Baloo 2',cursive">Select an Article</h3>
+        <p style="color:var(--text-muted);font-size:14px">Click any article to read the full summary and take a quiz</p>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+<script src="/js/app.js"></script>
+<script>
+const CAT_COLORS={polity:'#6c63ff',economy:'#f5c842',science:'#06b6d4',environment:'#22c55e',international:'#f97316',social:'#ec4899',history:'#8b5cf6',geography:'#22c55e',general:'#8888aa'};
+let selArticle=null,quiz=[],quizAnswers={},quizSubmitted=false;
+
+async function loadToday(){
+  document.getElementById('date-label').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('articles-list').innerHTML=loading('Fetching today\'s current affairs...');
+  try{
+    const data=await api('GET','/currentaffairs/today');
+    document.getElementById('articles-list').innerHTML=data.map(a=>`
+      <button onclick='openArticle(${JSON.stringify(a).replace(/'/g,"&#39;")})' style="width:100%;text-align:left;margin-bottom:12px;background:none;border:none;cursor:pointer;padding:0">
+        <div class="glass glass-hover" style="padding:20px" id="art-${a._id}">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span class="badge" style="background:${CAT_COLORS[a.category]||'#8888aa'}20;color:${CAT_COLORS[a.category]||'#8888aa'};border:1px solid ${CAT_COLORS[a.category]||'#8888aa'}40">${a.category}</span>
+            ${a.source?`<span style="font-size:12px;color:var(--text-muted)">${a.source}</span>`:''}
+          </div>
+          <h3 style="font-weight:700;font-size:14px;margin-bottom:8px;line-height:1.4">${a.title}</h3>
+          <p style="font-size:12px;color:var(--text-muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${a.summary}</p>
+          <div style="margin-top:8px;font-size:12px;color:#00e5ff;font-weight:700">Read more →</div>
+        </div>
+      </button>`).join('')||'<div class="glass" style="padding:32px;text-align:center"><p style="color:var(--text-muted)">No articles today. Check back later!</p></div>';
+  }catch{document.getElementById('articles-list').innerHTML='<div class="glass" style="padding:32px;text-align:center"><p style="color:var(--text-muted)">Failed to load articles</p></div>';}
+}
+
+function openArticle(a){
+  selArticle=a;quiz=[];quizAnswers={};quizSubmitted=false;
+  const color=CAT_COLORS[a.category]||'#8888aa';
+  document.getElementById('article-detail').innerHTML=`
+    <div class="glass" style="border-radius:12px;overflow:hidden;position:sticky;top:24px">
+      <div style="padding:20px;border-bottom:1px solid var(--border)">
+        <span class="badge" style="background:${color}20;color:${color};border:1px solid ${color}40;margin-bottom:12px;display:inline-block">${a.category}</span>
+        <h2 style="font-weight:900;font-size:18px;line-height:1.4;margin-bottom:8px">${a.title}</h2>
+        ${a.tags?.length?`<div style="display:flex;flex-wrap:wrap;gap:4px">${a.tags.map(t=>`<span class="badge badge-primary">${t}</span>`).join('')}</div>`:''}
+      </div>
+      <div style="padding:20px;overflow-y:auto;max-height:500px">
+        <div style="margin-bottom:16px">
+          <h3 style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px">Summary</h3>
+          <p style="font-size:14px;line-height:1.7">${a.summary}</p>
+        </div>
+        <div style="background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.2);border-radius:12px;padding:16px;margin-bottom:16px">
+          <h3 style="font-size:12px;font-weight:700;color:#a78bfa;text-transform:uppercase;margin-bottom:8px">🎯 UPSC Relevance</h3>
+          <p style="font-size:14px;color:var(--text-muted);line-height:1.7">${a.upscRelevance}</p>
+        </div>
+        ${a.sourceUrl?`<a href="${a.sourceUrl}" target="_blank" style="font-size:12px;color:#06b6d4;display:flex;align-items:center;gap:4px;margin-bottom:16px">🔗 Read original article</a>`:''}
+        <div style="border-top:1px solid var(--border);padding-top:16px" id="quiz-section">
+          <button onclick="loadQuiz('${a._id}')" class="btn-primary w-full" style="justify-content:center;font-size:14px">🧠 Take Quiz on This Article</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function loadQuiz(id){
+  document.getElementById('quiz-section').innerHTML=loading('Generating quiz...');
+  try{
+    const data=await api('GET',`/currentaffairs/${id}/quiz`);
+    quiz=data;quizAnswers={};quizSubmitted=false;
+    renderQuiz();
+  }catch{document.getElementById('quiz-section').innerHTML='<p style="color:var(--text-muted);font-size:14px">Failed to load quiz</p>';}
+}
+
+function renderQuiz(){
+  document.getElementById('quiz-section').innerHTML=`
+    <h3 style="font-weight:700;font-size:14px;margin-bottom:12px">Quick Quiz</h3>
+    ${quiz.map((q,qi)=>`
+      <div style="margin-bottom:16px">
+        <p style="font-size:14px;font-weight:500;margin-bottom:8px">${qi+1}. ${q.question}</p>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          ${q.options.map((opt,oi)=>`<button onclick="answerQuiz(${qi},'${opt.replace(/'/g,"\\'")}',this)" id="qopt-${qi}-${oi}" style="width:100%;text-align:left;font-size:12px;padding:8px;border-radius:8px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--text);transition:all .2s">${opt}</button>`).join('')}
+        </div>
+        <div id="qexp-${qi}" style="display:none;font-size:12px;color:var(--text-muted);background:var(--bg-card2);padding:8px;border-radius:8px;margin-top:6px">${q.explanation}</div>
+      </div>`).join('')}
+    <button onclick="submitQuiz()" id="submit-quiz-btn" class="btn-primary w-full" style="justify-content:center;font-size:14px;margin-top:8px" disabled>Submit Quiz</button>
+    <div id="quiz-score" style="display:none"></div>`;
+}
+
+function answerQuiz(qi,opt,btn){
+  if(quizSubmitted)return;
+  quizAnswers[qi]=opt;
+  document.querySelectorAll(`[id^="qopt-${qi}-"]`).forEach(b=>{b.style.borderColor='var(--border)';b.style.background='none';b.style.color='var(--text)';});
+  btn.style.borderColor='var(--primary)';btn.style.background='rgba(108,99,255,.1)';
+  if(Object.keys(quizAnswers).length===quiz.length)document.getElementById('submit-quiz-btn').disabled=false;
+}
+
+function submitQuiz(){
+  quizSubmitted=true;
+  let score=0;
+  quiz.forEach((q,qi)=>{
+    const sel=quizAnswers[qi];
+    document.querySelectorAll(`[id^="qopt-${qi}-"]`).forEach(b=>{
+      const txt=b.textContent.trim();
+      if(txt===q.correctAnswer){b.style.borderColor='#22c55e';b.style.background='rgba(34,197,94,.1)';b.style.color='#22c55e';}
+      else if(txt===sel&&txt!==q.correctAnswer){b.style.borderColor='#ef4444';b.style.background='rgba(239,68,68,.1)';b.style.color='#ef4444';}
+      b.disabled=true;
+    });
+    document.getElementById(`qexp-${qi}`).style.display='block';
+    if(sel===q.correctAnswer)score++;
+  });
+  document.getElementById('submit-quiz-btn').style.display='none';
+  document.getElementById('quiz-score').style.display='block';
+  document.getElementById('quiz-score').innerHTML=`<div style="text-align:center;padding:12px;background:var(--bg-card2);border-radius:12px;margin-top:8px"><div style="font-size:24px;font-weight:900" class="gradient-text">${score}/${quiz.length}</div><div style="font-size:12px;color:var(--text-muted)">Quiz Score</div></div>`;
+}
+
+document.addEventListener('DOMContentLoaded',loadToday);
+</script>
+</body></html>

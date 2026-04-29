@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Admin Panel — Sakshi's Mentor</title>
+<link rel="stylesheet" href="/css/style.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+</head><body class="hero-bg">
+<div class="emoji-float" style="top:8%;left:3%;animation-delay:0s">🛡️</div>
+<button class="mobile-toggle" id="mobile-toggle">☰</button>
+<div class="overlay" id="overlay"></div>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main-content">
+<div class="space-y-6" style="max-width:1200px">
+  <div>
+    <h1 style="font-family:'Baloo 2',cursive;font-size:28px;font-weight:800;margin-bottom:4px"><span class="gradient-text">📊 Admin Dashboard</span></h1>
+    <p style="color:var(--text-muted);font-weight:600">Students ko monitor karo aur resources manage karo</p>
+  </div>
+  <div class="grid grid-4" id="stats-row">
+    ${['Total Students','Platform Accuracy','Avg Streak','Live Activities'].map((l,i)=>`<div class="stat-card" style="padding:24px"><p style="color:var(--text-muted);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">${l}</p><p style="font-family:'Baloo 2',cursive;font-size:32px;font-weight:800;color:${['#7c6fff','#00e676','#ffd700','#00e5ff'][i]}" id="stat-${i}">—</p></div>`).join('')}
+  </div>
+  <div style="display:flex;gap:8px;border-bottom:1.5px solid var(--border)">
+    ${['🔴 Live Activity','👥 Students','🎥 NCERT Videos'].map((t,i)=>`<button onclick="setTab(${i},this)" id="tab-btn-${i}" style="padding:12px 20px;font-weight:800;font-size:14px;border:none;background:none;cursor:pointer;color:${i===0?'var(--primary)':'var(--text-muted)'};border-bottom:${i===0?'2px solid var(--primary)':'none'};transition:all .2s;border-radius:8px 8px 0 0">${t}</button>`).join('')}
+  </div>
+  <div id="tab-content"></div>
+</div>
+</main>
+<script src="/js/app.js"></script>
+<script>
+let students=[],activities=[],videos=[],activeTab=0;
+let actInterval;
+
+async function loadAll(){
+  try{
+    const [s,a,v]=await Promise.allSettled([
+      api('GET','/admin/students'),
+      api('GET','/admin/activity-feed'),
+      api('GET','/admin/chapter-videos')
+    ]);
+    if(s.status==='fulfilled')students=s.value;
+    if(a.status==='fulfilled')activities=a.value;
+    if(v.status==='fulfilled')videos=v.value;
+    updateStats();
+    renderTab(activeTab);
+  }catch{}
+}
+
+function updateStats(){
+  const totalQ=students.reduce((s,x)=>s+(x.totalQuestionsAttempted||0),0);
+  const totalC=students.reduce((s,x)=>s+(x.totalCorrect||0),0);
+  document.getElementById('stat-0').textContent=students.length;
+  document.getElementById('stat-1').textContent=(totalQ>0?Math.round((totalC/totalQ)*100):0)+'%';
+  document.getElementById('stat-2').textContent=Math.round(students.reduce((s,x)=>s+(x.streak||0),0)/(students.length||1))+' days';
+  document.getElementById('stat-3').textContent=activities.length;
+}
+
+function setTab(i,btn){
+  activeTab=i;
+  document.querySelectorAll('[id^="tab-btn-"]').forEach((b,j)=>{b.style.color=j===i?'var(--primary)':'var(--text-muted)';b.style.borderBottom=j===i?'2px solid var(--primary)':'none';b.style.background=j===i?'rgba(124,111,255,.08)':'none';});
+  renderTab(i);
+}
+
+function renderTab(i){
+  const el=document.getElementById('tab-content');
+  if(i===0){
+    el.innerHTML=`<div class="glass" style="padding:24px">
+      <h2 style="font-size:20px;font-weight:700;margin-bottom:16px">📡 Real-Time Student Activity</h2>
+      ${!activities.length?'<p style="color:var(--text-muted);text-align:center;padding:32px">No activity yet. Students will appear here when they solve questions!</p>':
+      `<div style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto">
+        ${activities.map(a=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg-card2);border-radius:8px;border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:12px;flex:1">
+            <span style="font-size:16px">${a.isCorrect?'✅':'❌'}</span>
+            <div style="flex:1;min-width:0">
+              <p style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.userName}</p>
+              <p style="font-size:12px;color:var(--text-muted)">Class ${a.userClass} • ${a.subject}</p>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <p style="font-size:12px;color:var(--text-muted)">${new Date(a.timestamp).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</p>
+            <span style="font-size:12px;font-weight:700;color:${a.isCorrect?'#22c55e':'#ef4444'}">${a.isCorrect?'✓ Correct':'✗ Wrong'}</span>
+          </div>
+        </div>`).join('')}
+      </div>`}
+    </div>`;
+  } else if(i===1){
+    el.innerHTML=`<div class="glass" style="padding:24px">
+      ${!students.length?'<p style="color:var(--text-muted);text-align:center;padding:32px">No students yet</p>':
+      `<div style="overflow-x:auto"><table style="width:100%;font-size:14px;border-collapse:collapse">
+        <thead><tr style="border-bottom:1px solid var(--border)">
+          ${['Name','Username','Class','Questions','Accuracy','Streak','Last Active'].map(h=>`<th style="text-align:left;padding:12px 16px;color:var(--text-muted);font-weight:600">${h}</th>`).join('')}
+        </tr></thead>
+        <tbody>${students.map(s=>{
+          const acc=s.totalQuestionsAttempted>0?Math.round((s.totalCorrect/s.totalQuestionsAttempted)*100):0;
+          return `<tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:12px 16px;font-weight:500">${s.name}</td>
+            <td style="padding:12px 16px;color:var(--text-muted)">@${s.username}</td>
+            <td style="padding:12px 16px;color:var(--text-muted)">Class ${s.currentClass}</td>
+            <td style="padding:12px 16px;text-align:center;color:#6c63ff;font-weight:600">${s.totalQuestionsAttempted}</td>
+            <td style="padding:12px 16px;text-align:center;font-weight:600;color:${acc>=70?'#22c55e':acc>=50?'#f5c842':'#ef4444'}">${acc}%</td>
+            <td style="padding:12px 16px;text-align:center;color:#f5c842;font-weight:600">🔥 ${s.streak}</td>
+            <td style="padding:12px 16px;color:var(--text-muted);font-size:12px">${new Date(s.lastActiveDate).toLocaleDateString('en-IN')}</td>
+          </tr>`;}).join('')}</tbody>
+      </table></div>`}
+    </div>`;
+  } else {
+    el.innerHTML=`<div class="space-y-6">
+      <div class="glass" style="padding:24px">
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:16px">📚 Chapter Videos (${videos.length})</h2>
+        ${!videos.length?'<p style="color:var(--text-muted);text-align:center;padding:32px">No videos added yet</p>':
+        `<div style="display:flex;flex-direction:column;gap:8px">${videos.map((v,idx)=>`<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px;background:var(--bg-card2);border-radius:8px;border:1px solid var(--border)">
+          <div style="flex:1">
+            <div style="display:flex;gap:6px;margin-bottom:6px"><span class="badge badge-primary">${v.subject}</span><span class="badge badge-gold">Class ${v.class}</span></div>
+            <h3 style="font-weight:600;margin-bottom:4px">${v.chapter}</h3>
+            <p style="font-size:14px;color:var(--text-muted);margin-bottom:6px">${v.videoTitle}</p>
+            <a href="${v.videoUrl}" target="_blank" style="font-size:12px;color:#6c63ff">🔗 Watch on YouTube</a>
+          </div>
+        </div>`).join('')}</div>`}
+      </div>
+    </div>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  loadAll();
+  actInterval=setInterval(async()=>{
+    try{activities=await api('GET','/admin/activity-feed');updateStats();if(activeTab===0)renderTab(0);}catch{}
+  },5000);
+});
+</script>
+</body></html>

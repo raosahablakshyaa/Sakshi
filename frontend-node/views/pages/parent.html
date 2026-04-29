@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Parent Dashboard — Sakshi's Mentor</title>
+<link rel="stylesheet" href="/css/style.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head><body class="hero-bg">
+<button class="mobile-toggle" id="mobile-toggle">☰</button>
+<div class="overlay" id="overlay"></div>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main-content">
+<div id="parent-root" style="max-width:1200px"></div>
+</main>
+<script src="/js/app.js"></script>
+<script>
+function renderSearch(){
+  document.getElementById('parent-root').innerHTML=`
+    <div class="space-y-6" style="max-width:600px">
+      <div>
+        <h1 style="font-size:24px;font-weight:900;display:flex;align-items:center;gap:8px">👥 Parent Dashboard</h1>
+        <p style="color:var(--text-muted);font-size:14px;margin-top:4px">Track your child's IAS preparation progress</p>
+      </div>
+      <div class="glass" style="padding:32px;text-align:center">
+        <div style="width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,#ec4899,#f97316);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px">👥</div>
+        <h2 style="font-size:20px;font-weight:900;margin-bottom:8px">Find Your Child's Progress</h2>
+        <p style="color:var(--text-muted);font-size:14px;margin-bottom:24px">Enter your child's registered email to view their study progress</p>
+        <div id="err-msg" style="display:none;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444;font-size:14px;padding:12px;border-radius:8px;margin-bottom:16px"></div>
+        <div style="display:flex;gap:12px;max-width:400px;margin:0 auto">
+          <input id="email-input" type="email" class="input-field" placeholder="child@example.com" style="flex:1" onkeydown="if(event.key==='Enter')findChild()"/>
+          <button onclick="findChild()" id="search-btn" class="btn-primary" style="flex-shrink:0;padding:12px 16px">🔍</button>
+        </div>
+      </div>
+      <div class="glass" style="padding:24px">
+        <h3 style="font-weight:700;margin-bottom:12px">What you can track:</h3>
+        <div class="grid grid-2">
+          ${[['📊','Daily study time & questions'],['🎯','Subject-wise accuracy'],['🔥','Study streak & consistency'],['⚠️','Weak areas needing attention'],['🏆','Badges & achievements'],['📈','Weekly progress charts']].map(([i,t])=>`<div style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text-muted)"><span>${i}</span>${t}</div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+async function findChild(){
+  const email=document.getElementById('email-input').value.trim();
+  if(!email)return;
+  document.getElementById('search-btn').innerHTML='⏳';
+  document.getElementById('search-btn').disabled=true;
+  document.getElementById('err-msg').style.display='none';
+  try{
+    const child=await api('GET',`/parent/find-child?email=${encodeURIComponent(email)}`);
+    const data=await api('GET',`/parent/child/${child._id}`);
+    renderDashboard(data);
+  }catch{
+    document.getElementById('err-msg').textContent='Student not found with this email. Please check and try again.';
+    document.getElementById('err-msg').style.display='block';
+    document.getElementById('search-btn').innerHTML='🔍';
+    document.getElementById('search-btn').disabled=false;
+  }
+}
+
+function renderDashboard(data){
+  const {child,summary,weeklyData,subjects,weakSubjects,strongSubjects}=data;
+  document.getElementById('parent-root').innerHTML=`
+    <div class="space-y-6">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <h1 style="font-size:24px;font-weight:900">${child.name}'s Progress</h1>
+          <p style="color:var(--text-muted);font-size:14px;margin-top:4px">Class ${child.currentClass} • Target: IAS ${child.targetYear}</p>
+        </div>
+        <button onclick="renderSearch()" class="btn-ghost" style="font-size:14px;padding:8px 16px">Switch Student</button>
+      </div>
+      <div class="grid" style="grid-template-columns:repeat(6,1fr);gap:12px" id="parent-stats">
+        ${[
+          {label:'Study Hours',value:summary.totalStudyHours,icon:'⏰',color:'#6c63ff',sub:'This month'},
+          {label:'Questions',value:summary.totalQuestions,icon:'📚',color:'#22c55e',sub:'Solved'},
+          {label:'Accuracy',value:`${summary.accuracy}%`,icon:'📈',color:'#f5c842',sub:'Overall'},
+          {label:'Active Days',value:summary.activeDays,icon:'🏆',color:'#f97316',sub:'This month'},
+          {label:'Streak',value:summary.currentStreak,icon:'🔥',color:'#ef4444',sub:'Days'},
+          {label:'Interviews',value:summary.interviewSessions,icon:'👥',color:'#ec4899',sub:'Practiced'},
+        ].map(s=>`<div class="stat-card" style="text-align:center">
+          <div style="font-size:18px;margin-bottom:8px">${s.icon}</div>
+          <div style="font-size:20px;font-weight:900;color:${s.color}">${s.value}</div>
+          <div style="font-size:12px;font-weight:600">${s.label}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${s.sub}</div>
+        </div>`).join('')}
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:24px">
+        <div class="glass" style="padding:24px">
+          <h2 style="font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px">📈 Weekly Study Activity</h2>
+          <canvas id="weekChart" height="100"></canvas>
+        </div>
+        <div class="glass" style="padding:24px">
+          <h2 style="font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px">📚 Subject Performance</h2>
+          ${subjects.slice(0,6).map(s=>`<div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+              <span style="text-transform:capitalize">${s.subject}</span>
+              <span style="color:${s.accuracy>=70?'#22c55e':s.accuracy>=50?'#f5c842':'#ef4444'}">${s.accuracy}% (${s.attempted} Qs)</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill ${s.accuracy>=70?'progress-fill-green':''}" style="width:${s.accuracy}%"></div></div>
+          </div>`).join('')||'<p style="color:var(--text-muted);font-size:14px">No practice data yet</p>'}
+        </div>
+      </div>
+      ${weakSubjects.length||strongSubjects.length?`<div class="grid" style="grid-template-columns:1fr 1fr;gap:24px">
+        ${weakSubjects.length?`<div class="glass" style="padding:20px;border-color:rgba(249,115,22,.3)">
+          <h3 style="font-weight:700;color:#f97316;margin-bottom:12px;display:flex;align-items:center;gap:8px">⚠️ Needs Attention</h3>
+          <p style="font-size:14px;color:var(--text-muted);margin-bottom:12px">Below 50% accuracy:</p>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">${weakSubjects.map(s=>`<span class="badge badge-red" style="text-transform:capitalize">${s}</span>`).join('')}</div>
+        </div>`:''}
+        ${strongSubjects.length?`<div class="glass" style="padding:20px;border-color:rgba(34,197,94,.3)">
+          <h3 style="font-weight:700;color:#22c55e;margin-bottom:12px;display:flex;align-items:center;gap:8px">🏆 Strong Areas</h3>
+          <p style="font-size:14px;color:var(--text-muted);margin-bottom:12px">Performing well in:</p>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">${strongSubjects.map(s=>`<span class="badge badge-green" style="text-transform:capitalize">${s}</span>`).join('')}</div>
+        </div>`:''}
+      </div>`:''}
+      <div class="glass" style="padding:24px;border-color:rgba(108,99,255,.3)">
+        <h3 style="font-weight:700;margin-bottom:12px">💡 Parent Guidance Tips</h3>
+        <div class="grid grid-2" style="font-size:14px;color:var(--text-muted);gap:8px">
+          <p>✅ Ensure ${child.name} studies at least 2 hours daily</p>
+          <p>✅ Celebrate small wins — every streak day matters!</p>
+          <p>✅ Help create a distraction-free study environment</p>
+          <p>✅ Discuss current affairs at dinner — makes it fun!</p>
+          <p>✅ Encourage reading newspapers or news apps daily</p>
+          <p>✅ Support the IAS dream — belief is the first step!</p>
+        </div>
+      </div>
+    </div>`;
+  if(weeklyData?.length){
+    new Chart(document.getElementById('weekChart').getContext('2d'),{
+      type:'bar',
+      data:{labels:weeklyData.map(w=>w.date.slice(5)),datasets:[{label:'Study (min)',data:weeklyData.map(w=>w.studyMinutes),backgroundColor:'rgba(124,111,255,.8)',borderRadius:8,borderSkipped:false}]},
+      options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9090bb',font:{weight:'700'}},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#9090bb',font:{weight:'700'}},grid:{color:'rgba(255,255,255,.04)'}}}}
+    });
+  }
+}
+document.addEventListener('DOMContentLoaded',renderSearch);
+</script>
+</body></html>

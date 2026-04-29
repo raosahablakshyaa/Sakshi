@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dashboard — Sakshi's Mentor</title>
+<link rel="stylesheet" href="/css/style.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head><body class="hero-bg">
+<div class="emoji-float" style="top:8%;left:3%;animation-delay:0s">🌟</div>
+<div class="emoji-float" style="top:25%;left:92%;animation-delay:1s">🚀</div>
+<div class="emoji-float" style="top:60%;left:5%;animation-delay:2s">📚</div>
+<div class="emoji-float" style="top:80%;left:88%;animation-delay:.5s">🏆</div>
+<button class="mobile-toggle" id="mobile-toggle">☰</button>
+<div class="overlay" id="overlay"></div>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main-content">
+  <div class="space-y-6" style="max-width:1200px" id="dash"></div>
+</main>
+<script src="/js/app.js"></script>
+<script>
+async function loadDashboard() {
+  const el = document.getElementById('dash');
+  el.innerHTML = `<div class="flex items-center justify-center" style="min-height:300px;flex-direction:column;gap:16px">
+    <div style="font-size:48px" class="float">🚀</div>
+    <div style="width:36px;height:36px;border:3px solid #7c6fff;border-top-color:transparent;border-radius:50%" class="spinner"></div>
+    <p style="color:var(--text-muted);font-size:15px;font-weight:700">Loading your dashboard...</p>
+  </div>`;
+  try {
+    const [dash, mot] = await Promise.allSettled([
+      api('GET','/progress/dashboard'),
+      api('GET','/ai/motivation')
+    ]);
+    const d = dash.status==='fulfilled' ? dash.value : null;
+    const motivation = mot.status==='fulfilled' ? mot.value.motivation : '';
+    const today = d?.today || {};
+    const overall = d?.overall || {};
+    const todayAcc = today.questionsAttempted ? Math.round((today.questionsCorrect/today.questionsAttempted)*100) : 0;
+
+    el.innerHTML = `
+    <!-- Header -->
+    <div class="flex items-center justify-between flex-wrap gap-4 slide-up">
+      <div>
+        <h1 style="font-family:'Baloo 2',cursive;font-size:30px;font-weight:800;line-height:1.2">
+          Jai Hind, <span class="gradient-text">${d?.user?.name||'Sakshi'}</span>! 🇮🇳
+        </h1>
+        <p style="color:var(--text-muted);font-size:14px;margin-top:6px;font-weight:600">
+          Class ${d?.user?.currentClass||7} → IAS Officer 2035 &nbsp;💪 &nbsp;Keep going, champion!
+        </p>
+      </div>
+      ${(overall.streak||0)>0?`
+      <div class="glass pulse-glow" style="padding:12px 20px;display:flex;align-items:center;gap:10px;border-radius:50px;border-color:rgba(249,115,22,.4)">
+        <span class="streak-fire" style="font-size:24px">🔥</span>
+        <div>
+          <div style="font-weight:900;color:#ff9800;font-size:18px">${overall.streak} Days!</div>
+          <div style="font-size:11px;color:var(--text-muted);font-weight:600">Streak 🔥</div>
+        </div>
+      </div>`:''}
+    </div>
+
+    <!-- Stat cards -->
+    <div class="grid grid-4 stagger">
+      ${[
+        {label:"Today's Questions", value:today.questionsAttempted||0, color:'#7c6fff', accent:'rgba(124,111,255,.12)', sub:`${today.questionsCorrect||0} correct ✅`, icon:'🎯'},
+        {label:"Today's Accuracy",  value:`${todayAcc}%`,             color:'#00e676', accent:'rgba(0,230,118,.1)',    sub:'Keep improving! 📈',  icon:'⚡'},
+        {label:'Study Time',        value:`${today.studyMinutes||0}m`, color:'#ffd700', accent:'rgba(255,215,0,.1)',   sub:'Today ⏰',             icon:'📖'},
+        {label:'Overall Accuracy',  value:`${overall.accuracy||0}%`,  color:'#ff4081', accent:'rgba(255,64,129,.1)',  sub:`${overall.totalAttempted||0} total 🏆`, icon:'🌟'},
+      ].map(s=>`
+      <div class="stat-card slide-up" style="--card-accent:${s.accent}">
+        <div class="flex items-center justify-between" style="margin-bottom:14px">
+          <span style="font-size:12px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px">${s.label}</span>
+          <div style="width:38px;height:38px;border-radius:12px;background:${s.accent};display:flex;align-items:center;justify-content:center;font-size:20px">${s.icon}</div>
+        </div>
+        <div style="font-family:'Baloo 2',cursive;font-size:32px;font-weight:800;color:${s.color};line-height:1">${s.value}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:6px;font-weight:600">${s.sub}</div>
+      </div>`).join('')}
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="slide-up">
+      <div class="section-title">⚡ Quick Actions</div>
+      <div class="grid grid-5 stagger" id="quick-actions-grid">
+        ${[
+          {href:'/mentor',          icon:'🤖', label:'Ask AI Mentor',   color:'#7c6fff', bg:'linear-gradient(135deg,rgba(124,111,255,.2),rgba(124,111,255,.05))', desc:'Get instant help'},
+          {href:'/practice',        icon:'🎯', label:'Daily Practice',  color:'#ffd700', bg:'linear-gradient(135deg,rgba(255,215,0,.2),rgba(255,215,0,.05))',    desc:'Solve questions'},
+          {href:'/ncert',           icon:'📚', label:'NCERT Hub',       color:'#00e676', bg:'linear-gradient(135deg,rgba(0,230,118,.2),rgba(0,230,118,.05))',    desc:'Study chapters'},
+          {href:'/interview',       icon:'🎤', label:'Mock Interview',  color:'#ff9800', bg:'linear-gradient(135deg,rgba(255,152,0,.2),rgba(255,152,0,.05))',    desc:'Practice IAS interview'},
+          {href:'/current-affairs', icon:'📰', label:'Current Affairs', color:'#00e5ff', bg:'linear-gradient(135deg,rgba(0,229,255,.2),rgba(0,229,255,.05))',    desc:"Today's news"},
+        ].map(a=>`
+        <a href="${a.href}" class="action-card slide-up" style="background:${a.bg}">
+          <div class="action-icon" style="background:${a.color}20;font-size:26px">${a.icon}</div>
+          <div style="font-size:13px;font-weight:800;color:${a.color}">${a.label}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;font-weight:600">${a.desc}</div>
+        </a>`).join('')}
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid" style="grid-template-columns:2fr 1fr;gap:24px" id="charts-grid">
+      <div class="glass slide-up" style="padding:24px">
+        <div class="section-title">📈 Weekly Progress</div>
+        ${d?.weeklyData?.length>0
+          ? `<canvas id="weekChart" height="80"></canvas>`
+          : `<div style="height:160px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px">
+               <div style="font-size:40px" class="float">📊</div>
+               <p style="color:var(--text-muted);font-size:14px;font-weight:700">Start practicing to see your chart! 🚀</p>
+             </div>`}
+      </div>
+      <div class="glass slide-up" style="padding:24px">
+        <div class="section-title">📚 Subject Performance</div>
+        ${d?.subjects?.length>0 ? d.subjects.slice(0,5).map(s=>`
+          <div style="margin-bottom:14px">
+            <div class="flex justify-between" style="font-size:12px;margin-bottom:6px;font-weight:700">
+              <span style="text-transform:capitalize">${s.subject}</span>
+              <span style="color:${s.accuracy>=70?'#00e676':s.accuracy>=50?'#ffd700':'#ff5252'};font-weight:800">${s.accuracy}%</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill ${s.accuracy>=70?'progress-fill-green':''}" style="width:${s.accuracy}%"></div></div>
+          </div>`).join('')
+        : `<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px 0">
+             <div style="font-size:36px" class="float">🎯</div>
+             <p style="color:var(--text-muted);font-size:13px;font-weight:700;text-align:center">Practice questions to see subject stats!</p>
+           </div>`}
+      </div>
+    </div>
+
+    <!-- Weak subjects -->
+    ${d?.weakSubjects?.length>0?`
+    <div class="glass slide-up" style="padding:24px;border-color:rgba(255,82,82,.3);background:linear-gradient(135deg,rgba(255,82,82,.05),rgba(255,152,0,.03))">
+      <div class="section-title" style="color:#ff5252">⚠️ Focus Areas — Inhe Thoda Aur Padhna Hai!</div>
+      <p style="color:var(--text-muted);font-size:14px;margin-bottom:14px;font-weight:600">Yeh subjects mein aur practice karo:</p>
+      <div class="flex flex-wrap gap-2" style="margin-bottom:16px">${d.weakSubjects.map(s=>`<span class="badge badge-red" style="text-transform:capitalize;font-size:13px;padding:5px 14px">${s}</span>`).join('')}</div>
+      <a href="/practice" class="btn-primary" style="font-size:14px">Practice Now 🎯</a>
+    </div>`:''}
+
+    <!-- Motivation -->
+    ${motivation?`
+    <div class="glass glow-primary slide-up" style="padding:24px;border-color:rgba(124,111,255,.4);background:linear-gradient(135deg,rgba(124,111,255,.08),rgba(255,64,129,.05))">
+      <div class="section-title">⭐ Aaj Ka Motivation — Mentor Ki Taraf Se!</div>
+      <p style="color:#c0c0e0;font-size:14px;line-height:1.8;white-space:pre-line;font-weight:600">${motivation}</p>
+    </div>`:''}
+
+    <!-- IAS Readiness -->
+    <div class="glass slide-up" style="padding:24px;background:linear-gradient(135deg,rgba(255,215,0,.06),rgba(255,152,0,.04))">
+      <div class="flex items-center justify-between" style="margin-bottom:16px">
+        <div class="section-title" style="margin-bottom:0">🏆 IAS Readiness Score</div>
+        <div style="font-family:'Baloo 2',cursive;font-size:36px;font-weight:800" class="gradient-text-gold">${d?.interviewReadiness||0}%</div>
+      </div>
+      <div class="progress-bar" style="height:12px;margin-bottom:10px;border-radius:6px">
+        <div style="height:100%;border-radius:6px;background:linear-gradient(90deg,#ffd700,#ff9800,#ff4081);width:${d?.interviewReadiness||0}%;transition:width 1.5s cubic-bezier(.34,1.56,.64,1);position:relative;overflow:hidden">
+          <div style="position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);animation:shimmer 2s linear infinite"></div>
+        </div>
+      </div>
+      <p style="font-size:13px;color:var(--text-muted);font-weight:700">Roz practice karo aur score badhao! Har question count karta hai 🎯</p>
+    </div>`;
+
+    if (d?.weeklyData?.length>0) {
+      const ctx = document.getElementById('weekChart').getContext('2d');
+      new Chart(ctx, {
+        type:'line',
+        data:{
+          labels: d.weeklyData.map(w=>w.date.slice(5)),
+          datasets:[{
+            label:'Questions',
+            data: d.weeklyData.map(w=>w.questions),
+            borderColor:'#7c6fff',
+            backgroundColor:'rgba(124,111,255,.15)',
+            fill:true, tension:.4, borderWidth:3,
+            pointBackgroundColor:'#ff4081',
+            pointRadius:5, pointHoverRadius:8
+          }]
+        },
+        options:{
+          plugins:{legend:{display:false}},
+          scales:{
+            x:{ticks:{color:'#9090bb',font:{weight:'700'}},grid:{color:'rgba(255,255,255,.04)'}},
+            y:{ticks:{color:'#9090bb',font:{weight:'700'}},grid:{color:'rgba(255,255,255,.04)'}}
+          }
+        }
+      });
+    }
+  } catch(e) {
+    el.innerHTML = `<div class="glass" style="padding:60px;text-align:center">
+      <div style="font-size:48px;margin-bottom:16px" class="float">😅</div>
+      <p style="color:var(--text-muted);font-weight:700">Dashboard load nahi hua. Backend check karo!</p>
+    </div>`;
+  }
+}
+document.addEventListener('DOMContentLoaded', loadDashboard);
+</script>
+</body></html>

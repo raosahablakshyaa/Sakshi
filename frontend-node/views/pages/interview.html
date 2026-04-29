@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Mock Interview — Sakshi's Mentor</title>
+<link rel="stylesheet" href="/css/style.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+</head><body class="hero-bg">
+<div class="emoji-float" style="top:8%;left:3%;animation-delay:0s">🎤</div>
+<div class="emoji-float" style="top:70%;left:93%;animation-delay:1s">🏆</div>
+<button class="mobile-toggle" id="mobile-toggle">☰</button>
+<div class="overlay" id="overlay"></div>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main-content">
+<div style="max-width:900px" id="interview-root"></div>
+</main>
+<script src="/js/app.js"></script>
+<script>
+const TIPS=[
+  {icon:'🧍',cat:'Body Language',tip:'Sit straight, maintain eye contact, smile naturally'},
+  {icon:'🗣️',cat:'Communication',tip:'Speak clearly, not too fast. Pause before answering.'},
+  {icon:'📝',cat:'Structure',tip:'Structure answers: Point 1, Point 2, Conclusion'},
+  {icon:'💪',cat:'Confidence',tip:'It\'s okay to say "I don\'t know" — honesty is valued'},
+  {icon:'📰',cat:'Current Affairs',tip:'Read newspaper daily. Know India\'s major policies.'},
+  {icon:'⚖️',cat:'Ethics',tip:'Always choose integrity over convenience in answers'},
+];
+let state={started:false,qIdx:0,total:16,complete:false};
+let messages=[],allAnswers=[],allScores=[],currentQ='',isListening=false,recognition=null,isSpeaking=false;
+
+function renderHome(){
+  document.getElementById('interview-root').innerHTML=`
+    <div class="space-y-6">
+      <div>
+        <h1 style="font-family:'Baloo 2',cursive;font-size:26px;font-weight:800;display:flex;align-items:center;gap:8px">🎤 <span class="gradient-text">AI Mock Interview</span></h1>
+        <p style="color:var(--text-muted);font-size:14px;margin-top:4px;font-weight:600">Real IAS Personality Test simulation with AI feedback & voice 🚀</p>
+      </div>
+      <div class="glass" style="padding:32px;text-align:center;border-color:rgba(249,115,22,.3)">
+        <div style="width:72px;height:72px;border-radius:20px;background:linear-gradient(135deg,#ff9800,#ffd700);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px;box-shadow:0 8px 25px rgba(255,152,0,.4)" class="float">🎤</div>
+        <h2 style="font-family:'Baloo 2',cursive;font-size:24px;font-weight:800;margin-bottom:12px">IAS Personality Test Simulation</h2>
+        <p style="color:var(--text-muted);margin-bottom:24px;max-width:500px;margin-left:auto;margin-right:auto">Face a real UPSC-style interview panel with 16 questions including scenario-based challenges. AI will evaluate your answers!</p>
+        <div class="grid grid-3" style="max-width:300px;margin:0 auto 32px">
+          ${[['16','Questions'],['🎤 AI','Voice'],['📊','Analysis']].map(([v,l])=>`<div style="background:var(--bg-card2);border-radius:12px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:900;color:#f97316">${v}</div><div style="font-size:12px;color:var(--text-muted)">${l}</div></div>`).join('')}
+        </div>
+        <button onclick="startInterview()" id="start-btn" class="btn-fun" style="font-size:16px;padding:14px 48px;justify-content:center">▶ Start Interview</button>
+      </div>
+      <div>
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px">💡 Interview Tips</h2>
+        <div class="grid grid-3" id="tips-grid">
+          ${TIPS.map(t=>`<div class="card-fun" style="padding:18px"><div style="font-size:28px;margin-bottom:10px">${t.icon}</div><div style="font-weight:800;font-size:14px;margin-bottom:4px;color:#a78bfa">${t.cat}</div><p style="font-size:12px;color:var(--text-muted);font-weight:600">${t.tip}</p></div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+async function startInterview(){
+  document.getElementById('start-btn').innerHTML='⏳ Starting...';
+  document.getElementById('start-btn').disabled=true;
+  try{
+    const res=await api('POST','/interview/start',{});
+    state={started:true,qIdx:0,total:res.totalQuestions,complete:false};
+    currentQ=res.question;messages=[];allAnswers=[];allScores=[];
+    messages.push({type:'interviewer',content:res.message});
+    renderSession();
+    setTimeout(()=>speak(res.question),500);
+  }catch{alert('Failed to start interview. Check backend.');}
+}
+
+function renderSession(){
+  document.getElementById('interview-root').innerHTML=`
+    <div class="space-y-4">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h1 style="font-size:20px;font-weight:900;display:flex;align-items:center;gap:8px">🎤 IAS Interview Session</h1>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:14px;color:var(--text-muted)">Q ${state.qIdx+1} / ${state.total}</span>
+          <div class="progress-bar" style="width:128px"><div class="progress-fill" style="width:${((state.qIdx+1)/state.total)*100}%;background:linear-gradient(90deg,#f97316,#f5c842)"></div></div>
+        </div>
+      </div>
+      ${state.complete?renderComplete():`
+      ${currentQ?`<div class="glass" style="padding:16px;background:linear-gradient(135deg,rgba(249,115,22,.1),rgba(245,200,66,.1));border-color:rgba(249,115,22,.3)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Current Question</div>
+            <p style="font-size:18px;font-weight:600;line-height:1.5">${currentQ}</p>
+          </div>
+          <button onclick="isSpeaking?stopSpeak():speak('${currentQ.replace(/'/g,"\\'")}',true)" style="padding:12px;border-radius:8px;border:none;background:rgba(249,115,22,.2);color:#f97316;cursor:pointer;flex-shrink:0;font-size:18px" id="speak-btn">🔊</button>
+        </div>
+      </div>`:''}
+      <div class="glass" style="border-radius:12px;overflow:hidden">
+        <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
+          <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#f97316,#f5c842);display:flex;align-items:center;justify-content:center;font-size:16px">✅</div>
+          <div><div style="font-weight:700;font-size:14px">UPSC Interview Board</div><div style="font-size:12px;color:var(--text-muted)">AI-powered personality test</div></div>
+        </div>
+        <div id="chat-msgs" style="padding:16px;overflow-y:auto;max-height:400px;display:flex;flex-direction:column;gap:16px"></div>
+      </div>
+      <div class="glass" style="padding:16px">
+        <label style="font-size:14px;color:var(--text-muted);display:block;margin-bottom:8px">Your Answer</label>
+        <textarea id="ans-input" class="input-field resize-none" rows="4" placeholder="Type your answer here... or use voice input below" style="margin-bottom:12px"></textarea>
+        <div style="display:flex;gap:12px">
+          <button onclick="toggleVoice()" id="voice-btn" style="padding:12px;border-radius:12px;border:1px solid var(--border);background:none;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:8px;font-size:14px">🎤 Voice</button>
+          <button onclick="submitAnswer()" id="submit-btn" class="btn-primary" style="flex:1;justify-content:center;font-size:14px">Submit Answer →</button>
+        </div>
+      </div>`}
+    </div>`;
+  renderMessages();
+}
+
+function renderMessages(){
+  const el=document.getElementById('chat-msgs');
+  if(!el)return;
+  el.innerHTML=messages.map(m=>`
+    <div style="display:flex;${m.type==='candidate'?'justify-content:flex-end':'justify-content:flex-start'};gap:12px">
+      ${m.type!=='candidate'?`<div style="width:32px;height:32px;border-radius:50%;background:${m.type==='feedback'?'rgba(34,197,94,.2)':'linear-gradient(135deg,#f97316,#f5c842)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:4px;font-size:14px">${m.type==='feedback'?'✅':'🎤'}</div>`:''}
+      <div class="${m.type==='candidate'?'chat-user':'chat-ai'}" style="${m.type==='feedback'?'border-color:rgba(34,197,94,.2)':''}">
+        <div style="font-size:14px;line-height:1.6">${renderMd(m.content)}</div>
+      </div>
+    </div>`).join('');
+  el.scrollTop=el.scrollHeight;
+}
+
+function renderComplete(){
+  return `<div class="space-y-6">
+    <div class="glass" style="padding:40px;text-align:center">
+      <div style="font-size:56px;margin-bottom:16px" class="float">🏆</div>
+      <h2 style="font-family:'Baloo 2',cursive;font-size:26px;font-weight:800;margin-bottom:12px">Interview Complete! 🎉</h2>
+      <p style="color:var(--text-muted)">Excellent work! Review your comprehensive feedback below.</p>
+    </div>
+    <div id="analysis-section">${loading('Generating your comprehensive analysis...')}</div>
+    <div style="display:flex;justify-content:center">
+      <button onclick="resetInterview()" class="btn-fun" style="font-size:16px;padding:14px 40px;justify-content:center">▶ Practice Again</button>
+    </div>
+  </div>`;
+}
+
+async function submitAnswer(){
+  const ans=document.getElementById('ans-input')?.value.trim();
+  if(!ans)return;
+  document.getElementById('ans-input').value='';
+  document.getElementById('submit-btn').innerHTML='⏳ Evaluating...';
+  document.getElementById('submit-btn').disabled=true;
+  messages.push({type:'candidate',content:ans});
+  allAnswers.push(ans);
+  renderMessages();
+  try{
+    const res=await api('POST','/interview/answer',{answer:ans,questionIndex:state.qIdx});
+    messages.push({type:'feedback',content:res.feedback});
+    const scores=extractScores(res.feedback);
+    allScores.push(scores);
+    if(res.isComplete){
+      state.complete=true;
+      renderSession();
+      generateAnalysis();
+    } else {
+      state.qIdx=res.nextQuestionIndex;
+      currentQ=res.nextQuestion||'';
+      renderSession();
+      if(res.nextQuestion)setTimeout(()=>speak(res.nextQuestion),1000);
+    }
+  }catch{messages.push({type:'feedback',content:'Error evaluating answer. Please try again.'});renderMessages();}
+}
+
+async function generateAnalysis(){
+  try{
+    const res=await api('POST','/interview/analysis',{answers:allAnswers,scores:allScores});
+    document.getElementById('analysis-section').innerHTML=`
+      <div class="glass" style="padding:24px">
+        <h3 style="font-size:18px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px">📊 Interview Analysis & Feedback</h3>
+        <div style="background:var(--bg-card2);border-radius:12px;padding:16px;font-size:14px;line-height:1.7;color:var(--text-muted)">${renderMd(res.analysis)}</div>
+      </div>`;
+  }catch{document.getElementById('analysis-section').innerHTML='<p style="color:var(--text-muted)">Could not generate analysis</p>';}
+}
+
+function extractScores(text){
+  return {
+    content:parseInt(text.match(/Content:\s*(\d+)/)?.[1])||5,
+    communication:parseInt(text.match(/Communication:\s*(\d+)/)?.[1])||5,
+    confidence:parseInt(text.match(/Confidence:\s*(\d+)/)?.[1])||5
+  };
+}
+
+function speak(text,fromBtn){
+  if(!('speechSynthesis' in window))return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.rate=1.2;u.pitch=0.95;u.lang='en-IN';
+  u.onstart=()=>{isSpeaking=true;const b=document.getElementById('speak-btn');if(b)b.textContent='🔇';};
+  u.onend=()=>{isSpeaking=false;const b=document.getElementById('speak-btn');if(b)b.textContent='🔊';};
+  window.speechSynthesis.speak(u);
+}
+
+function stopSpeak(){window.speechSynthesis.cancel();isSpeaking=false;const b=document.getElementById('speak-btn');if(b)b.textContent='🔊';}
+
+function toggleVoice(){
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){alert('Voice not supported. Try Chrome!');return;}
+  if(isListening){recognition?.stop();isListening=false;document.getElementById('voice-btn').innerHTML='🎤 Voice';return;}
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR();recognition.lang='en-IN';recognition.continuous=true;
+  recognition.onresult=e=>{document.getElementById('ans-input').value=Array.from(e.results).map(r=>r[0].transcript).join(' ');};
+  recognition.onend=()=>{isListening=false;document.getElementById('voice-btn').innerHTML='🎤 Voice';};
+  recognition.start();isListening=true;document.getElementById('voice-btn').innerHTML='🛑 Stop';
+}
+
+function resetInterview(){state={started:false,qIdx:0,total:16,complete:false};messages=[];allAnswers=[];allScores=[];currentQ='';renderHome();}
+
+document.addEventListener('DOMContentLoaded',renderHome);
+</script>
+</body></html>

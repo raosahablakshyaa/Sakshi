@@ -81,24 +81,62 @@ router.get('/chapters', protect, (req, res) => {
   res.json({ subject, class: parseInt(classNum), chapters: chapters.map((title, i) => ({ index: i + 1, title })) });
 });
 
+// Fetch Wikipedia summary for a topic
+async function fetchWikipedia(topic) {
+  try {
+    const axios = require('axios');
+    const searchRes = await axios.get('https://en.wikipedia.org/w/api.php', {
+      params: { action: 'query', list: 'search', srsearch: topic + ' India history', format: 'json', srlimit: 1 },
+      timeout: 8000
+    });
+    const title = searchRes.data.query.search[0]?.title;
+    if (!title) return '';
+    const summaryRes = await axios.get('https://en.wikipedia.org/w/api.php', {
+      params: { action: 'query', prop: 'extracts', exintro: true, explaintext: true, titles: title, format: 'json' },
+      timeout: 8000
+    });
+    const pages = summaryRes.data.query.pages;
+    const page = pages[Object.keys(pages)[0]];
+    return page.extract ? page.extract.slice(0, 2000) : '';
+  } catch { return ''; }
+}
+
 router.post('/overview', protect, async (req, res) => {
   try {
     const { subject, chapter, class: cls } = req.body;
-    const prompt = `You are an expert UPSC educator. Give a FOCUSED chapter overview for:\nSubject: ${subject} | Class: ${cls} | Chapter: "${chapter}"\n\nStructure your response EXACTLY like this:\n\n## 📖 Chapter Overview\n[2-3 lines explaining ONLY what's important for UPSC - skip general intro]\n\n## 🎯 UPSC Key Topics\n[5-6 bullet points of ONLY topics that appear in UPSC Prelims/Mains - be specific]\n\n## 📚 Critical Concepts for UPSC\n[Explain ONLY the 4-5 most important concepts that are frequently asked in UPSC exams. Each concept: 2-3 lines with specific examples]\n\n## 🔑 Important Facts & Dates (UPSC Focus)\n[10-12 specific facts, dates, names, events that are ACTUALLY asked in UPSC exams - no filler]\n\n## 🗺️ UPSC Connection Map\n[Show how this chapter connects to: GS Paper 1 topics, Mains essay themes, Prelims MCQs]\n\n## ⚡ Quick Revision — 10 One-Liners\n[10 crisp one-line facts that are UPSC-relevant for last-minute revision]\n\n## 💡 UPSC Exam Patterns\n[How this chapter is typically asked: Prelims MCQ pattern, Mains essay angles, common question types]\n\nBe STRICT about relevance. Only include what appears in actual UPSC exams. Skip general educational content.`;
+    const wikiContent = await fetchWikipedia(chapter);
+    const prompt = `You are an expert UPSC educator. Use the following Wikipedia content as reference to give a FOCUSED UPSC chapter overview.
 
-    try {
-      const result = await callAI(prompt, 3000);
-      res.json({ overview: result.text, subject, chapter, class: cls, provider: result.provider });
-    } catch (aiErr) {
-      console.error('AI call failed for overview:', aiErr.message);
-      const prebuiltData = chapterOverviews[chapter];
-      if (prebuiltData) {
-        res.json({ overview: prebuiltData.overview, subject, chapter, class: cls, provider: 'Prebuilt' });
-      } else {
-        const fallback = `## 📖 Chapter Overview\n${chapter} is a crucial chapter in ${subject} for Class ${cls}. It covers important historical, geographical, or political concepts relevant to UPSC preparation.\n\n## 🎯 UPSC Key Topics\n- Key events and personalities\n- Important dates and timelines\n- Social and political structures\n- Economic systems\n- Cultural developments\n\n## 📚 Critical Concepts for UPSC\nThis chapter contains fundamental concepts that frequently appear in UPSC Prelims and Mains exams. Students should focus on understanding the interconnections between different topics.\n\n## 🔑 Important Facts & Dates\nVarious important facts and dates are covered in this chapter that are essential for UPSC preparation.\n\n## 🗺️ UPSC Connection Map\nThis chapter connects to multiple GS papers and is relevant for both Prelims MCQs and Mains essays.\n\n## ⚡ Quick Revision — 10 One-Liners\n1. Key concept 1\n2. Key concept 2\n3. Key concept 3\n4. Key concept 4\n5. Key concept 5\n6. Key concept 6\n7. Key concept 7\n8. Key concept 8\n9. Key concept 9\n10. Key concept 10\n\n## 💡 UPSC Exam Patterns\nThis chapter is typically asked in Prelims as MCQs and in Mains as essay questions.`;
-        res.json({ overview: fallback, subject, chapter, class: cls, provider: 'Fallback' });
-      }
-    }
+Wikipedia Reference:
+${wikiContent || 'Not available — use your knowledge.'}
+
+Subject: ${subject} | Class: ${cls} | Chapter: "${chapter}"
+
+Structure your response EXACTLY like this:
+
+## 📖 Chapter Overview
+[2-3 lines explaining ONLY what's important for UPSC]
+
+## 🎯 UPSC Key Topics
+[5-6 bullet points of topics that appear in UPSC Prelims/Mains]
+
+## 📚 Critical Concepts for UPSC
+[4-5 most important concepts frequently asked in UPSC. Each: 2-3 lines with examples]
+
+## 🔑 Important Facts & Dates
+[10-12 specific facts, dates, names that are asked in UPSC exams]
+
+## 🗺️ UPSC Connection Map
+[How this connects to GS Paper topics, Mains essays, Prelims MCQs]
+
+## ⚡ Quick Revision — 10 One-Liners
+[10 crisp UPSC-relevant one-line facts]
+
+## 💡 UPSC Exam Patterns
+[How this chapter is asked: Prelims MCQ pattern, Mains essay angles]`;
+
+    const result = await callAI(prompt, 3000);
+    res.json({ overview: result.text, subject, chapter, class: cls, provider: result.provider + ' + Wikipedia' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -107,29 +145,39 @@ router.post('/overview', protect, async (req, res) => {
 router.post('/pyqs', protect, async (req, res) => {
   try {
     const { subject, chapter, class: cls } = req.body;
-    
-    const specificContent = chapterContent[chapter];
-    if (specificContent && specificContent.pyqs && specificContent.pyqs.length > 0) {
-      return res.json({ pyqs: specificContent.pyqs, subject, chapter, class: cls, provider: 'Chapter-Specific PYQs', count: specificContent.pyqs.length });
-    }
-    
-    const pyqs = getRandomPYQs(chapter, 20);
-    if (pyqs.length > 0) {
-      return res.json({ pyqs, subject, chapter, class: cls, provider: 'PYQ Bank' });
-    }
 
-    const prompt = `You are a UPSC PYQ expert. Generate ALL important Previous Year Questions (PYQs) that have been asked from NCERT ${subject} Class ${cls} chapter "${chapter}" in UPSC Prelims and Mains exams from 1979 to 2024.\n\nReturn ONLY a JSON array in this exact format:\n[\n  {\n    "year": 2019,\n    "exam": "UPSC Prelims",\n    "paper": "GS Paper 1",\n    "question": "Full question text here",\n    "options": ["A) option1", "B) option2", "C) option3", "D) option4"],\n    "correctAnswer": "A) option1",\n    "explanation": "Detailed explanation of why this answer is correct and what concept it tests",\n    "difficulty": "easy/medium/hard",\n    "topic": "specific topic within the chapter"\n  }\n]\n\nInclude:\n- UPSC Prelims MCQs (with options)\n- UPSC Mains questions (options array will be empty [], correctAnswer will be "Subjective")\n- State PSC questions if highly relevant\n- Questions from 1979 to 2024\n\nGenerate at least 15-20 questions. If fewer actual PYQs exist, add highly probable exam questions based on the chapter's importance. Mark those with year: 0 and exam: "Expected Question".\n\nReturn ONLY the JSON array, no other text.`;
+    const prompt = `You are a UPSC PYQ expert with complete knowledge of all UPSC Civil Services Examination questions from 1979 to 2024.
 
-    try {
-      const result = await callAI(prompt, 3000);
-      const jsonMatch = result.text.match(/\[\s*\{[\s\S]*?\}\s*\]/);
-      const aiPyqs = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
-      res.json({ pyqs: aiPyqs, subject, chapter, class: cls, provider: result.provider });
-    } catch (aiErr) {
-      console.error('AI call failed for PYQs:', aiErr.message);
-      const fallbackPyqs = getRandomPYQs(chapter, 20);
-      res.json({ pyqs: fallbackPyqs, subject, chapter, class: cls, provider: 'Fallback' });
-    }
+Generate ALL Previous Year Questions (PYQs) ever asked from NCERT ${subject} Class ${cls} chapter "${chapter}" in UPSC Prelims and Mains exams.
+
+Also include highly probable expected questions based on this chapter's UPSC importance.
+
+Return ONLY a valid JSON array:
+[
+  {
+    "year": 2019,
+    "exam": "UPSC Prelims",
+    "paper": "GS Paper 1",
+    "question": "Full question text",
+    "options": ["A) option1", "B) option2", "C) option3", "D) option4"],
+    "correctAnswer": "A) option1",
+    "explanation": "Detailed explanation with context",
+    "difficulty": "easy/medium/hard",
+    "topic": "specific topic"
+  }
+]
+
+Rules:
+- Prelims MCQs: include 4 options and correctAnswer
+- Mains questions: options = [], correctAnswer = "Subjective"
+- Expected questions: year = 0, exam = "Expected Question"
+- Generate minimum 20 questions, more if the chapter is important
+- Return ONLY the JSON array, no other text`;
+
+    const result = await callAI(prompt, 4000);
+    const jsonMatch = result.text.match(/\[\s*\{[\s\S]*?\}\s*\]/);
+    const pyqs = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+    res.json({ pyqs, subject, chapter, class: cls, provider: result.provider, count: pyqs.length });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

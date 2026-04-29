@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Important Dates — Sakshi's Mentor</title>
+<link rel="stylesheet" href="/css/style.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+.date-card{background:linear-gradient(135deg,rgba(19,19,43,.9),rgba(26,26,53,.8));border:1.5px solid var(--border);border-radius:18px;padding:18px;transition:all .3s cubic-bezier(.34,1.56,.64,1);cursor:default}
+.date-card:hover{border-color:var(--primary);box-shadow:0 8px 25px rgba(124,111,255,.2);transform:translateY(-3px)}
+.cat-btn{padding:8px 16px;border-radius:50px;font-size:12px;border:1.5px solid var(--border);cursor:pointer;transition:all .25s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;font-weight:700;background:none;color:var(--text-muted)}
+.cat-btn:hover{border-color:var(--primary);color:var(--text);transform:scale(1.05)}
+.cat-btn.active{background:linear-gradient(135deg,#7c6fff,#ff4081);color:white;border-color:transparent;box-shadow:0 4px 15px rgba(124,111,255,.4)}
+.search-input{width:100%;padding:12px 12px 12px 44px;background:var(--bg-card2);border:1.5px solid var(--border);border-radius:14px;color:var(--text);font-size:14px;outline:none;font-family:'Nunito',sans-serif;font-weight:600}
+.search-input:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-glow)}
+.search-input::placeholder{color:var(--text-muted)}
+</style>
+</head><body class="hero-bg">
+<div class="emoji-float" style="top:8%;left:3%;animation-delay:0s">📅</div>
+<div class="emoji-float" style="top:65%;left:93%;animation-delay:1.2s">⏳</div>
+<button class="mobile-toggle" id="mobile-toggle">☰</button>
+<div class="overlay" id="overlay"></div>
+<aside class="sidebar" id="sidebar"></aside>
+<div class="main-content hero-bg">
+<div style="max-width:1200px;margin:0 auto">
+    <div style="margin-bottom:32px" class="slide-up">
+      <h1 style="font-family:'Baloo 2',cursive;font-size:30px;font-weight:800;display:flex;align-items:center;gap:10px;margin-bottom:8px">📅 <span class="gradient-text">Important Dates</span></h1>
+      <p style="color:var(--text-muted);font-size:14px;font-weight:600">UPSC ke liye sabse important dates master karo 🚀</p>
+    </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px">
+    <div style="position:relative">
+      <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b">🔍</span>
+      <input type="text" id="search" class="search-input" placeholder="Search by event, date..." oninput="filterDates()"/>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;overflow-x:auto;padding-bottom:4px" id="cat-filter-row">
+      <span style="color:#64748b;flex-shrink:0">⚙️</span>
+      <div style="display:flex;gap:6px;flex-nowrap" id="cat-filters"></div>
+    </div>
+  </div>
+
+  <div style="color:var(--text-muted);font-size:14px;margin-bottom:16px;font-weight:700">Showing <span style="color:#a78bfa;font-weight:800" id="count">0</span> dates</div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="dates-grid"></div>
+
+  <div style="margin-top:48px;background:linear-gradient(135deg,rgba(124,111,255,.1),rgba(255,64,129,.06));border:1.5px solid rgba(124,111,255,.25);border-radius:20px;padding:24px">
+    <div class="section-title" style="color:#a78bfa">📚 Study Tips</div>
+    <ul style="color:var(--text-muted);font-size:14px;display:flex;flex-direction:column;gap:8px;font-weight:600">
+      <li>✨ UPSC relevance wale dates pehle yaad karo</li>
+      <li>📊 Dates ko period ke hisaab se group karo</li>
+      <li>📰 Current affairs se connect karo better retention ke liye</li>
+      <li>🔄 Chronological ordering practice karo</li>
+      <li>🧠 Mnemonics use karo important years ke liye</li>
+    </ul>
+  </div>
+
+  <div style="margin-top:24px;display:flex;justify-content:center">
+    <button onclick="toggleAdmin()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;background:rgba(30,41,59,.5);border:1px solid #334155;border-radius:8px;color:#94a3b8;cursor:pointer;font-size:14px">🔒 <span id="admin-toggle-txt">Show Admin</span></button>
+  </div>
+
+  <div id="admin-panel" style="display:none;margin-top:24px;background:linear-gradient(135deg,rgba(127,29,29,.2),rgba(124,45,18,.2));border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:24px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <span style="font-size:20px;color:#f87171">🔒</span>
+      <h3 style="font-size:20px;font-weight:700;color:#fca5a5">Admin Login</h3>
+    </div>
+    <p style="color:#94a3b8;font-size:14px;margin-bottom:24px">⚠️ Limited to 3 admin users. Use these credentials to access the admin dashboard.</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px" id="admin-cards"></div>
+    <div style="margin-top:24px;background:rgba(15,23,42,.5);border:1px solid #334155;border-radius:8px;padding:16px">
+      <h4 style="font-size:14px;font-weight:600;color:#cbd5e1;margin-bottom:8px">📋 How to Use:</h4>
+      <ol style="font-size:12px;color:#94a3b8;padding-left:16px;display:flex;flex-direction:column;gap:4px">
+        <li>Copy email and password from above</li>
+        <li>Navigate to <span style="color:#a78bfa;font-family:monospace">/admin</span> page</li>
+        <li>Login with your admin credentials</li>
+        <li>Access admin dashboard to manage platform</li>
+      </ol>
+    </div>
+  </div>
+</div>
+</div>
+<script src="/js/app.js"></script>
+<script>
+const DATES=[
+  {date:'2300 BCE',event:'Indus Valley Civilization flourished',upsRelevance:'Foundation of Indian civilization, urban planning, seals',category:'Ancient India'},
+  {date:'1500 BCE',event:'Vedic Period begins',upsRelevance:'Vedas, Aryans, caste system origins, Sanskrit literature',category:'Ancient India'},
+  {date:'600 BCE',event:'Mahavira (Jainism) and Buddha (Buddhism) born',upsRelevance:'Religious movements, philosophy, social reforms',category:'Ancient India'},
+  {date:'322 BCE',event:'Mauryan Empire founded by Chandragupta Maurya',upsRelevance:"First pan-Indian empire, Kautilya's Arthashastra, administration",category:'Ancient India'},
+  {date:'268 BCE',event:'Ashoka becomes Mauryan Emperor',upsRelevance:'Edicts of Ashoka, Buddhism spread, non-violence policy',category:'Ancient India'},
+  {date:'320 CE',event:'Gupta Empire founded by Chandragupta I',upsRelevance:'Golden Age of India, art, science, mathematics, literature',category:'Ancient India'},
+  {date:'712 CE',event:'Muhammad bin Qasim invades Sindh',upsRelevance:'First Muslim invasion, Islamic influence begins',category:'Medieval India'},
+  {date:'1192 CE',event:'Battle of Tarain - Muhammad of Ghor defeats Prithviraj Chauhan',upsRelevance:'End of Hindu kingdoms, Delhi Sultanate foundation',category:'Medieval India'},
+  {date:'1206 CE',event:'Delhi Sultanate established by Qutb-ud-din Aibak',upsRelevance:'Islamic rule in India, Indo-Islamic culture',category:'Medieval India'},
+  {date:'1526 CE',event:'Battle of Panipat - Babur defeats Ibrahim Lodi, Mughal Empire begins',upsRelevance:'Mughal rule, Indo-Islamic synthesis, administration',category:'Medieval India'},
+  {date:'1556 CE',event:'Akbar becomes Mughal Emperor',upsRelevance:'Religious tolerance, Mansabdari system, cultural integration',category:'Medieval India'},
+  {date:'1707 CE',event:'Aurangzeb dies, Mughal Empire begins decline',upsRelevance:'Regional kingdoms rise, British opportunity',category:'Medieval India'},
+  {date:'1600 CE',event:'East India Company chartered',upsRelevance:'British commercial interest in India begins',category:'British India'},
+  {date:'1757 CE',event:'Battle of Plassey - Clive defeats Siraj-ud-Daulah',upsRelevance:'British political control begins, Bengal under British rule',category:'British India'},
+  {date:'1857 CE',event:'Indian Rebellion (Sepoy Mutiny)',upsRelevance:'First war of independence, British response, direct rule begins',category:'British India'},
+  {date:'1885 CE',event:'Indian National Congress founded',upsRelevance:'Organized independence movement begins',category:'British India'},
+  {date:'1919 CE',event:'Jallianwala Bagh Massacre',upsRelevance:'Turning point in independence movement, Rowlatt Act',category:'British India'},
+  {date:'1920 CE',event:'Non-Cooperation Movement launched by Gandhi',upsRelevance:'Mass civil disobedience, Khilafat movement',category:'British India'},
+  {date:'1930 CE',event:'Salt March by Gandhi',upsRelevance:'Civil Disobedience Movement, iconic protest',category:'British India'},
+  {date:'1942 CE',event:'Quit India Movement launched',upsRelevance:'Final push for independence, mass participation',category:'British India'},
+  {date:'15 August 1947',event:'India gains independence',upsRelevance:'End of colonial rule, nation-state formation',category:'Independence'},
+  {date:'26 November 1949',event:'Constitution adopted by Constituent Assembly',upsRelevance:"Drafting process, fundamental rights, directive principles",category:'Constitution'},
+  {date:'26 January 1950',event:'Indian Constitution comes into effect, India becomes Republic',upsRelevance:"Sovereign democratic republic, Dr. Ambedkar's contribution",category:'Constitution'},
+  {date:'1991 CE',event:'Economic Liberalization begins',upsRelevance:'LPG reforms, market economy, globalization',category:'Economy'},
+  {date:'26 January',event:'Republic Day',upsRelevance:'Constitution Day, national celebration, military parade',category:'International Days'},
+  {date:'8 March',event:"International Women's Day",upsRelevance:'Gender equality, women empowerment, social issues',category:'International Days'},
+  {date:'22 April',event:'Earth Day',upsRelevance:'Environmental protection, climate change, sustainability',category:'International Days'},
+  {date:'5 June',event:'World Environment Day',upsRelevance:'Environmental conservation, pollution, climate action',category:'International Days'},
+  {date:'21 June',event:'International Yoga Day',upsRelevance:'Indian cultural heritage, health, wellness',category:'International Days'},
+  {date:'15 August',event:'Independence Day',upsRelevance:'National pride, freedom struggle, patriotism',category:'International Days'},
+  {date:'2 October',event:'Gandhi Jayanti',upsRelevance:'Non-violence, civil disobedience, Gandhian philosophy',category:'International Days'},
+];
+
+const ADMINS=[
+  {id:1,email:'lakshyayadav314@gmail.com',password:'Raosahab_lakshya@2506',role:'Super Admin'},
+  {id:2,email:'admin@sakshi.com',password:'Admin@2506',role:'Admin'},
+  {id:3,email:'mentor@sakshi.com',password:'Mentor@2506',role:'Content Admin'},
+];
+
+const cats=['All',...new Set(DATES.map(d=>d.category))];
+let selCat='All',showPwd=[];
+
+function init(){
+  document.getElementById('cat-filters').innerHTML=cats.map((c,i)=>`<button class="cat-btn ${c==='All'?'active':''}" onclick="setCat('${c}',this)">${c}</button>`).join('');
+  document.getElementById('admin-cards').innerHTML=ADMINS.map(a=>`
+    <div style="background:rgba(30,41,59,.5);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:16px">
+      <span style="font-size:12px;padding:2px 8px;background:rgba(239,68,68,.2);color:#fca5a5;border-radius:20px;font-weight:600">${a.role}</span>
+      <div style="margin-top:12px">
+        <p style="font-size:11px;color:#64748b;margin-bottom:4px">Email</p>
+        <div style="display:flex;align-items:center;gap:6px">
+          <code style="font-size:12px;color:#c4b5fd;background:rgba(15,23,42,.5);padding:4px 8px;border-radius:4px;flex:1;word-break:break-all">${a.email}</code>
+          <button onclick="copy('${a.email}',${a.id*10})" style="padding:4px;background:none;border:none;cursor:pointer;color:#64748b" id="cp-${a.id*10}">📋</button>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <p style="font-size:11px;color:#64748b;margin-bottom:4px">Password</p>
+        <div style="display:flex;align-items:center;gap:6px">
+          <code style="font-size:12px;color:#c4b5fd;background:rgba(15,23,42,.5);padding:4px 8px;border-radius:4px;flex:1" id="pwd-${a.id}">${showPwd.includes(a.id)?a.password:'••••••••••••'}</code>
+          <button onclick="togglePwd(${a.id})" style="padding:4px;background:none;border:none;cursor:pointer;color:#64748b">${showPwd.includes(a.id)?'🙈':'👁️'}</button>
+          <button onclick="copy('${a.password}',${a.id*20})" style="padding:4px;background:none;border:none;cursor:pointer;color:#64748b" id="cp-${a.id*20}">📋</button>
+        </div>
+      </div>
+    </div>`).join('');
+  filterDates();
+}
+
+function setCat(c,btn){
+  selCat=c;
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  filterDates();
+}
+
+function filterDates(){
+  const q=document.getElementById('search').value.toLowerCase();
+  const filtered=DATES.filter(d=>{
+    const match=d.event.toLowerCase().includes(q)||d.date.toLowerCase().includes(q)||d.upsRelevance.toLowerCase().includes(q);
+    return match&&(selCat==='All'||d.category===selCat);
+  });
+  document.getElementById('count').textContent=filtered.length;
+  document.getElementById('dates-grid').innerHTML=filtered.map(d=>`
+    <div class="date-card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:8px">
+        <span style="font-family:'Baloo 2',cursive;font-size:18px;font-weight:800;color:#a78bfa">${d.date}</span>
+        <span style="font-size:11px;padding:3px 10px;background:rgba(124,111,255,.15);color:#a78bfa;border-radius:20px;flex-shrink:0;font-weight:700;border:1px solid rgba(124,111,255,.3)">${d.category}</span>
+      </div>
+      <h3 style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:8px;line-height:1.4">${d.event}</h3>
+      <div style="background:rgba(124,111,255,.08);border-radius:10px;padding:10px;border-left:3px solid #7c6fff">
+        <p style="font-size:12px;color:var(--text-muted);font-weight:600"><span style="color:#a78bfa;font-weight:800">UPSC:</span> ${d.upsRelevance}</p>
+      </div>
+    </div>`).join('')||`<div style="grid-column:1/-1;text-align:center;padding:48px;color:#64748b"><div style="font-size:40px;margin-bottom:12px">📅</div><p>No dates found matching your search</p></div>`;
+}
+
+function toggleAdmin(){
+  const p=document.getElementById('admin-panel');
+  const show=p.style.display==='none';
+  p.style.display=show?'block':'none';
+  document.getElementById('admin-toggle-txt').textContent=show?'Hide Admin':'Show Admin';
+}
+
+function togglePwd(id){
+  if(showPwd.includes(id))showPwd=showPwd.filter(i=>i!==id);else showPwd.push(id);
+  document.getElementById(`pwd-${id}`).textContent=showPwd.includes(id)?ADMINS.find(a=>a.id===id).password:'••••••••••••';
+}
+
+function copy(text,id){
+  navigator.clipboard.writeText(text);
+  const btn=document.getElementById(`cp-${id}`);
+  btn.textContent='✅';setTimeout(()=>btn.textContent='📋',2000);
+}
+
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body></html>

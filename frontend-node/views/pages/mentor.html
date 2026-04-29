@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AI Mentor — Sakshi's Mentor</title>
+<link rel="stylesheet" href="/css/style.css"/>
+<style>
+#chat-wrap{display:flex;height:calc(100vh - 48px);gap:0;max-width:1200px}
+#sessions-panel{width:260px;background:linear-gradient(180deg,#0f0f25,#13132b);border-right:1.5px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+#chat-main{flex:1;display:flex;flex-direction:column;background:#0d0d1a;min-width:0}
+#messages{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px}
+.msg-user{display:flex;justify-content:flex-end}
+.msg-ai{display:flex;justify-content:flex-start;align-items:flex-start;gap:12px}
+.bubble-user{background:linear-gradient(135deg,#7c6fff,#ff4081);color:white;padding:14px 18px;border-radius:20px 20px 4px 20px;max-width:80%;font-size:14px;line-height:1.7;font-weight:600;box-shadow:0 4px 15px rgba(124,111,255,.3);animation:slide-up .3s ease}
+.bubble-ai{background:var(--bg-card2);border:1.5px solid var(--border);color:var(--text);padding:14px 18px;border-radius:20px 20px 20px 4px;max-width:85%;font-size:14px;line-height:1.7;font-weight:500;animation:slide-up .3s ease}
+.ts{font-size:11px;color:var(--text-muted);margin-top:4px;font-weight:600}
+#quick-prompts{padding:10px 16px;border-top:1.5px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch}
+#quick-prompts .inner{display:flex;gap:8px;padding-bottom:4px;white-space:nowrap}
+.qp-btn{flex-shrink:0;font-size:12px;background:rgba(124,111,255,.1);border:1.5px solid rgba(124,111,255,.25);color:#a78bfa;padding:7px 14px;border-radius:50px;cursor:pointer;transition:all .25s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;font-weight:700}
+.qp-btn:hover{border-color:var(--primary);background:rgba(124,111,255,.2);transform:translateY(-2px) scale(1.05)}
+#input-area{padding:12px 16px;border-top:1.5px solid var(--border)}
+.sess-btn{width:100%;text-align:left;padding:12px 14px;border-radius:12px;border:1.5px solid transparent;background:none;cursor:pointer;margin-bottom:4px;transition:all .2s;color:var(--text)}
+.sess-btn:hover{background:rgba(124,111,255,.1);border-color:rgba(124,111,255,.2)}
+.sess-btn.active{background:rgba(124,111,255,.2);border-color:rgba(124,111,255,.4)}
+@media(max-width:768px){
+  #chat-wrap{flex-direction:column;height:auto;min-height:calc(100vh - 60px)}
+  #sessions-panel{width:100%;max-height:160px;border-right:none;border-bottom:1.5px solid var(--border)}
+  #chat-main{flex:1;min-height:0}
+  #messages{padding:14px;gap:12px;max-height:calc(100vh - 420px);min-height:200px}
+  .bubble-user,.bubble-ai{max-width:92%;font-size:13px;padding:11px 14px}
+  #input-area{padding:10px 12px}
+  #quick-prompts{padding:8px 12px}
+}
+</style>
+</head><body class="hero-bg">
+<button class="mobile-toggle" id="mobile-toggle">☰</button>
+<div class="overlay" id="overlay"></div>
+<aside class="sidebar" id="sidebar"></aside>
+<main class="main-content" style="padding:0">
+<div id="chat-wrap">
+  <div id="sessions-panel">
+    <div style="padding:16px;border-bottom:1.5px solid var(--border)">
+      <button onclick="startNewChat()" class="btn-primary w-full" style="justify-content:center;padding:12px;border-radius:14px">✨ New Chat</button>
+    </div>
+    <div id="sessions-list" style="flex:1;overflow-y:auto;padding:12px"></div>
+  </div>
+  <div id="chat-main">
+    <div style="padding:16px 24px;border-bottom:1.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(124,111,255,.05),rgba(255,64,129,.03))">
+      <div style="display:flex;align-items:center;gap:16px">
+        <button onclick="toggleSessions()" style="display:none;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:20px" id="mob-sess">💬</button>
+        <div style="position:relative">
+          <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&q=80" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--primary)"/>
+          <div style="position:absolute;bottom:0;right:0;width:12px;height:12px;background:#00e676;border-radius:50%;border:2px solid #0d0d1a;box-shadow:0 0 6px #00e676"></div>
+        </div>
+        <div>
+          <div style="font-family:'Baloo 2',cursive;font-weight:800;font-size:15px;background:linear-gradient(135deg,#a78bfa,#ff4081);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Sakshi's Mentor</div>
+          <div style="font-size:12px;color:#00e676;display:flex;align-items:center;gap:4px;font-weight:700">● Online 24/7 🤖</div>
+        </div>
+      </div>
+      <select id="subject-sel" class="input-field" style="width:auto;padding:8px 12px;font-size:12px">
+        <option>General</option><option>History</option><option>Geography</option><option>Polity</option>
+        <option>Economics</option><option>Science</option><option>Environment</option>
+        <option>Current Affairs</option><option>Ethics</option><option>Essay</option>
+      </select>
+    </div>
+    <div id="messages"></div>
+    <div id="quick-prompts">
+      <div class="inner" id="qp-inner"></div>
+    </div>
+    <div id="input-area">
+      <div style="display:flex;gap:12px">
+        <button id="mic-btn" onclick="toggleVoice()" style="padding:10px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text-muted);cursor:pointer;flex-shrink:0;font-size:18px">🎤</button>
+        <input id="msg-input" class="input-field" placeholder="Koi bhi sawaal pooch..." style="flex:1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"/>
+        <button onclick="sendMessage()" style="background:linear-gradient(135deg,#7c6fff,#ff4081);border:none;color:white;padding:12px 16px;border-radius:14px;cursor:pointer;flex-shrink:0;font-size:18px;box-shadow:0 4px 15px rgba(124,111,255,.4);transition:all .25s cubic-bezier(.34,1.56,.64,1)" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">➤</button>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+<script src="/js/app.js"></script>
+<script>
+const QUICK_PROMPTS=['Class 7 se IAS tak roadmap','French Revolution - UPSC angle','Constitution Preamble analysis','UPSC Mains answer writing','Maurya Empire relevance','GDP vs GNP vs NNP','Climate Change - Mains questions','Fundamental Rights vs Directive Principles','Daily study schedule','Current Affairs in answers'];
+let sessionId=null, isListening=false, recognition=null;
+
+const msgs=document.getElementById('messages');
+const input=document.getElementById('msg-input');
+
+function ts(){return new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}
+
+function addMsg(role,content){
+  const div=document.createElement('div');
+  div.className=role==='user'?'msg-user':'msg-ai';
+  if(role==='assistant'){
+    div.innerHTML=`<div style="width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,#7c6fff,#ff4081);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;margin-top:4px;box-shadow:0 4px 10px rgba(124,111,255,.3)">🤖</div>
+    <div><div class="bubble-ai">${renderMd(content)}</div><div class="ts">${ts()}</div></div>`;
+  } else {
+    div.innerHTML=`<div><div class="bubble-user">${renderMd(content)}</div><div class="ts" style="text-align:right">${ts()}</div></div>`;
+  }
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function showTyping(){
+  const div=document.createElement('div');
+  div.className='msg-ai';div.id='typing';
+  div.innerHTML=`<div style="width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,#7c6fff,#ff4081);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 4px 10px rgba(124,111,255,.3)">🤖</div>
+  <div class="bubble-ai" style="display:flex;align-items:center;gap:10px"><span class="spinner" style="width:16px;height:16px;border:2.5px solid #7c6fff;border-top-color:transparent;border-radius:50%"></span><span style="color:var(--text-muted);font-size:14px;font-weight:700">Soch raha hoon... 🤔</span></div>`;
+  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
+}
+
+async function sendMessage(text){
+  const msg=text||input.value.trim();
+  if(!msg)return;
+  input.value='';
+  addMsg('user',msg);
+  showTyping();
+  try{
+    const res=await api('POST','/ai/chat',{message:msg,sessionId,subject:document.getElementById('subject-sel').value.toLowerCase()});
+    document.getElementById('typing')?.remove();
+    sessionId=res.sessionId;
+    addMsg('assistant',res.reply);
+    loadSessions();
+  }catch{
+    document.getElementById('typing')?.remove();
+    addMsg('assistant','Oops! Thoda technical issue aa gaya. Please try again! 🙏');
+  }
+}
+
+async function loadSessions(){
+  try{
+    const data=await api('GET','/ai/sessions');
+    const el=document.getElementById('sessions-list');
+    if(!data.length){el.innerHTML=`<div style="text-align:center;padding:32px;color:var(--text-muted);font-size:12px">💬<br/>No chats yet</div>`;return;}
+    el.innerHTML=data.map(s=>`<button onclick="loadSession('${s.sessionId}')" class="sess-btn ${sessionId===s.sessionId?'active':''}">
+      <p style="font-size:12px;color:var(--text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px">💬 ${s.preview||'Chat session'}</p>
+      <span style="font-size:11px;color:var(--text-muted);font-weight:600">🕐 ${s.messageCount} messages</span>
+    </button>`).join('');
+  }catch{}
+}
+
+async function loadSession(sid){
+  try{
+    const data=await api('GET',`/ai/sessions/${sid}`);
+    sessionId=sid;msgs.innerHTML='';
+    data.messages.forEach(m=>addMsg(m.role,m.content));
+  }catch{}
+}
+
+function startNewChat(){
+  sessionId=null;msgs.innerHTML='';
+  addMsg('assistant','**Naya Session Shuru 🎯**\n\nSakshi, main ready hoon. Aaj kya seekhna hai — NCERT concept, current affairs analysis, answer writing, ya study planning? Batao, shuru karte hain.');
+  loadSessions();
+}
+
+function toggleVoice(){
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){alert('Voice not supported. Try Chrome!');return;}
+  if(isListening){recognition?.stop();isListening=false;document.getElementById('mic-btn').style.color='var(--text-muted)';return;}
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR();recognition.lang='hi-IN';recognition.continuous=false;
+  recognition.onresult=e=>{input.value=e.results[0][0].transcript;isListening=false;document.getElementById('mic-btn').style.color='var(--text-muted)';};
+  recognition.onend=()=>{isListening=false;document.getElementById('mic-btn').style.color='var(--text-muted)';};
+  recognition.start();isListening=true;document.getElementById('mic-btn').style.color='#ef4444';
+}
+
+function toggleSessions(){document.getElementById('sessions-panel').style.display=document.getElementById('sessions-panel').style.display==='none'?'flex':'none';}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('qp-inner').innerHTML=QUICK_PROMPTS.map(p=>`<button class="qp-btn" onclick="sendMessage('${p}')">${p}</button>`).join('');
+  addMsg('assistant',`**Namaste Sakshi!** 🇮🇳\n\nMain hoon **Sakshi's Mentor** — tera dedicated IAS preparation system.\n\n**Tera Mission:** Class 7 → IAS Officer\n**Teri Strength:** Sahi guidance + Daily discipline\n**Mera Kaam:** Har step pe saath rehna\n\n---\n\n📚 **Foundation Building** — NCERT Class 6-12 complete mastery\n🏛️ **Core Subjects** — History, Geography, Polity, Economics, Science\n📰 **Current Affairs** — Daily news ka UPSC angle\n✍️ **Answer Writing** — Mains ke liye structured writing\n🎤 **Interview Prep** — IAS Personality Test simulation\n\n---\n\nSakshi, **IAS banana ek marathon hai, sprint nahi.** Aaj ka pehla sawaal pooch! 🎯`);
+  loadSessions();
+});
+</script>
+</body></html>
