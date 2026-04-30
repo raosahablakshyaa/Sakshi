@@ -27,6 +27,25 @@ app.use(express.json({ limit: '10mb' }));
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
 app.use('/api/', limiter);
 
+// MongoDB connection (cached for serverless)
+let isConnected = false;
+async function connectDB() {
+  if (isConnected && mongoose.connection.readyState === 1) return;
+  await mongoose.connect(process.env.MONGODB_URI);
+  isConnected = true;
+  console.log('✅ MongoDB Connected');
+}
+
+// Ensure DB is connected on every request (must be before routes)
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    res.status(500).json({ message: 'Database connection failed', error: err.message });
+  }
+});
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/ai', require('./routes/ai'));
@@ -39,18 +58,8 @@ app.use('/api/interview', require('./routes/interview'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/parent', require('./routes/parent'));
 
-app.get('/health', (req, res) => res.json({ status: 'Sakshi\'s Mentor Backend Running 🚀' }));
-
-// MongoDB connection (cached for serverless)
-let isConnected = false;
-async function connectDB() {
-  if (isConnected) return;
-  await mongoose.connect(process.env.MONGODB_URI);
-  isConnected = true;
-  console.log('✅ MongoDB Connected');
-}
-
-connectDB().catch(err => console.error('MongoDB Error:', err));
+app.get('/', (req, res) => res.json({ status: "Sakshi's Mentor Backend Running 🚀", version: '1.0.0' }));
+app.get('/health', (req, res) => res.json({ status: "Sakshi's Mentor Backend Running 🚀" }));
 
 // Export for Vercel (serverless) — also support local dev
 if (process.env.NODE_ENV !== 'production') {
