@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const chatHistorySchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
   sessionId: { type: String, required: true },
   messages: [{
     role: { type: String, enum: ['user', 'assistant'], required: true },
