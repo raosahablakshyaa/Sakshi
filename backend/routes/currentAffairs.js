@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const { protect, adminOnly } = require('../middleware/auth');
 const CurrentAffairs = require('../models/CurrentAffairs');
 const { callAI } = require('../lib/aiUtils');
 
@@ -32,7 +31,7 @@ Make the news realistic, factual-style, and highly relevant for UPSC preparation
   return JSON.parse(jsonMatch[0]);
 }
 
-router.get('/today', protect, async (req, res) => {
+router.get('/today', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
 
@@ -49,7 +48,7 @@ router.get('/today', protect, async (req, res) => {
   }
 });
 
-router.get('/', protect, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { from, to, category, limit = 20, page = 1 } = req.query;
     const query = { isActive: true };
@@ -70,7 +69,7 @@ router.get('/', protect, async (req, res) => {
   }
 });
 
-router.get('/:id/quiz', protect, async (req, res) => {
+router.get('/:id/quiz', async (req, res) => {
   try {
     const article = await CurrentAffairs.findById(req.params.id);
     if (!article) return res.status(404).json({ message: 'Not found' });
@@ -96,7 +95,7 @@ Generate 3 UPSC-style MCQ questions. Return ONLY a JSON array:
   }
 });
 
-router.post('/regenerate', protect, adminOnly, async (req, res) => {
+router.post('/regenerate', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     await CurrentAffairs.deleteMany({ date: today });
@@ -110,7 +109,7 @@ router.post('/regenerate', protect, adminOnly, async (req, res) => {
   }
 });
 
-router.post('/', protect, adminOnly, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const article = await CurrentAffairs.create(req.body);
     res.status(201).json(article);
