@@ -199,6 +199,6 @@ function toggleVoice(){
 
 function resetInterview(){state={started:false,qIdx:0,total:16,complete:false};messages=[];allAnswers=[];allScores=[];currentQ='';renderHome();}
 
-document.addEventListener('DOMContentLoaded',renderHome);
+document.addEventListener('DOMContentLoaded', async () => { await initConfig(); renderHome(); });
 </script>
 </body></html>

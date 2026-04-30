@@ -189,6 +189,6 @@ function copy(text,id){
   btn.textContent='✅';setTimeout(()=>btn.textContent='📋',2000);
 }
 
-document.addEventListener('DOMContentLoaded',init);
+document.addEventListener('DOMContentLoaded', async () => { await initConfig(); init(); });
 </script>
 </body></html>

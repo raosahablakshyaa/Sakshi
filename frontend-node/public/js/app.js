@@ -1,14 +1,11 @@
 let API = '';
 
-async function initConfig() {
-  try {
-    const res = await fetch('/config');
-    const { backendUrl } = await res.json();
-    API = backendUrl + '/api';
-  } catch {
-    API = 'http://localhost:8080/api';
-  }
-}
+const configReady = fetch('/config')
+  .then(r => r.json())
+  .then(({ backendUrl }) => { API = backendUrl + '/api'; })
+  .catch(() => { API = 'http://localhost:8080/api'; });
+
+async function initConfig() { await configReady; }
 
 // Sidebar nav items
 const NAV = [
@@ -62,9 +59,12 @@ function initLayout() {
 
 // API helper
 async function api(method, path, body) {
+  const token = localStorage.getItem('token');
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (token) opts.headers['Authorization'] = `Bearer ${token}`;
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(API + path, opts);
+  if (res.status === 401) { localStorage.clear(); window.location.href = '/login'; return; }
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }

@@ -130,6 +130,6 @@ function renderDashboard(data){
     });
   }
 }
-document.addEventListener('DOMContentLoaded',renderSearch);
+document.addEventListener('DOMContentLoaded', async () => { await initConfig(); renderSearch(); });
 </script>
 </body></html>

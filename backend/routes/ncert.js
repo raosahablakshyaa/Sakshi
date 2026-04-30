@@ -1,9 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
 const { callAI } = require('../lib/aiUtils');
-const chapterOverviews = require('../lib/chapterData');
-const { getRandomPYQs } = require('../lib/pyqBank');
 const chapterContent = require('../lib/chapterContent');
 
 const NCERT_STRUCTURE = {
@@ -64,9 +61,9 @@ const NCERT_STRUCTURE = {
   }
 };
 
-router.get('/structure', protect, (req, res) => res.json(NCERT_STRUCTURE));
+router.get('/structure', (req, res) => res.json(NCERT_STRUCTURE));
 
-router.get('/chapters', protect, (req, res) => {
+router.get('/chapters', (req, res) => {
   const subject = req.query.subject;
   const classNum = req.query.class || req.query.classNum;
   
@@ -101,7 +98,7 @@ async function fetchWikipedia(topic) {
   } catch { return ''; }
 }
 
-router.post('/overview', protect, async (req, res) => {
+router.post('/overview', async (req, res) => {
   try {
     const { subject, chapter, class: cls } = req.body;
     const wikiContent = await fetchWikipedia(chapter);
@@ -142,7 +139,7 @@ Structure your response EXACTLY like this:
   }
 });
 
-router.post('/pyqs', protect, async (req, res) => {
+router.post('/pyqs', async (req, res) => {
   try {
     const { subject, chapter, class: cls } = req.body;
 
@@ -183,7 +180,7 @@ Rules:
   }
 });
 
-router.post('/summary', protect, async (req, res) => {
+router.post('/summary', async (req, res) => {
   try {
     const { subject, chapter, class: cls } = req.body;
     const prompt = `Create a concise NCERT study summary for:\nSubject: ${subject} | Class: ${cls} | Chapter: "${chapter}"\n\n## Overview\n## Key Concepts\n## Important Facts\n## UPSC Connection\n## Quick Revision (5 points)\n\nKeep it crisp and exam-focused.`;
@@ -194,7 +191,7 @@ router.post('/summary', protect, async (req, res) => {
   }
 });
 
-router.post('/youtube-videos', protect, async (req, res) => {
+router.post('/youtube-videos', async (req, res) => {
   try {
     const { subject, chapter, class: cls } = req.body;
     
@@ -244,7 +241,7 @@ router.post('/youtube-videos', protect, async (req, res) => {
   }
 });
 
-router.get('/download/:subject/:class/:chapter', protect, (req, res) => {
+router.get('/download/:subject/:class/:chapter', (req, res) => {
   try {
     const { subject, class: cls, chapter } = req.params;
     

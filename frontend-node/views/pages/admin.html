@@ -118,7 +118,8 @@ function renderTab(i){
   }
 }
 
-document.addEventListener('DOMContentLoaded',()=>{
+document.addEventListener('DOMContentLoaded', async ()=>{
+  await initConfig();
   loadAll();
   actInterval=setInterval(async()=>{
     try{activities=await api('GET','/admin/activity-feed');updateStats();if(activeTab===0)renderTab(0);}catch{}

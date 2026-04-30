@@ -136,6 +136,6 @@ function submitQuiz(){
   document.getElementById('quiz-score').innerHTML=`<div style="text-align:center;padding:12px;background:var(--bg-card2);border-radius:12px;margin-top:8px"><div style="font-size:24px;font-weight:900" class="gradient-text">${score}/${quiz.length}</div><div style="font-size:12px;color:var(--text-muted)">Quiz Score</div></div>`;
 }
 
-document.addEventListener('DOMContentLoaded',loadToday);
+document.addEventListener('DOMContentLoaded', async () => { await initConfig(); loadToday(); });
 </script>
 </body></html>

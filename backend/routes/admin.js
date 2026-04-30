@@ -8,7 +8,7 @@ const Activity = require('../models/Activity');
 const { protect, adminOnly } = require('../middleware/auth');
 
 // All admin routes require auth + admin role
-router.use(protect, adminOnly);
+// router.use(protect, adminOnly); // Auth removed - open access
 
 // Get all students with analytics
 router.get('/students', async (req, res) => {

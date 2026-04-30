@@ -2,18 +2,12 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Progress = require('../models/Progress');
-const { protect } = require('../middleware/auth');
 
 // Get child's progress (parent accesses via parentEmail link)
-router.get('/child/:childId', protect, async (req, res) => {
+router.get('/child/:childId', async (req, res) => {
   try {
     const child = await User.findById(req.params.childId).select('-password');
     if (!child) return res.status(404).json({ message: 'Student not found' });
-
-    // Verify parent access
-    if (req.user.role !== 'admin' && req.user.role !== 'parent' && child.parentEmail !== req.user.email) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
 
     const last30 = new Date();
     last30.setDate(last30.getDate() - 30);
@@ -70,7 +64,7 @@ router.get('/child/:childId', protect, async (req, res) => {
 });
 
 // Find child by email (for parent to link)
-router.get('/find-child', protect, async (req, res) => {
+router.get('/find-child', async (req, res) => {
   try {
     const { email } = req.query;
     const child = await User.findOne({ email, role: 'student' }).select('name email currentClass avatar streak');

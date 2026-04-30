@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const ChapterQuestions = require('../models/ChapterQuestions');
-const { protect } = require('../middleware/auth');
 const { callAI } = require('../lib/aiUtils');
 
 // Detailed chapter prompts for AI to generate specific questions
@@ -291,7 +290,7 @@ IMPORTANT:
 }
 
 // Get chapter questions
-router.get('/chapter/:subject/:class/:chapterIndex/:chapterTitle', protect, async (req, res) => {
+router.get('/chapter/:subject/:class/:chapterIndex/:chapterTitle', async (req, res) => {
   try {
     const { subject, class: classNum, chapterIndex, chapterTitle } = req.params;
     const decodedTitle = decodeURIComponent(chapterTitle);

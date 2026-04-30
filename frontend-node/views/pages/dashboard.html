@@ -183,6 +183,9 @@ async function loadDashboard() {
     </div>`;
   }
 }
-document.addEventListener('DOMContentLoaded', loadDashboard);
+document.addEventListener('DOMContentLoaded', async () => {
+  await initConfig();
+  loadDashboard();
+});
 </script>
 </body></html>

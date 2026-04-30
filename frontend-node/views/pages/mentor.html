@@ -162,7 +162,8 @@ function toggleVoice(){
 
 function toggleSessions(){document.getElementById('sessions-panel').style.display=document.getElementById('sessions-panel').style.display==='none'?'flex':'none';}
 
-document.addEventListener('DOMContentLoaded',()=>{
+document.addEventListener('DOMContentLoaded', async ()=>{
+  await initConfig();
   document.getElementById('qp-inner').innerHTML=QUICK_PROMPTS.map(p=>`<button class="qp-btn" onclick="sendMessage('${p}')">${p}</button>`).join('');
   addMsg('assistant',`**Namaste Sakshi!** 🇮🇳\n\nMain hoon **Sakshi's Mentor** — tera dedicated IAS preparation system.\n\n**Tera Mission:** Class 7 → IAS Officer\n**Teri Strength:** Sahi guidance + Daily discipline\n**Mera Kaam:** Har step pe saath rehna\n\n---\n\n📚 **Foundation Building** — NCERT Class 6-12 complete mastery\n🏛️ **Core Subjects** — History, Geography, Polity, Economics, Science\n📰 **Current Affairs** — Daily news ka UPSC angle\n✍️ **Answer Writing** — Mains ke liye structured writing\n🎤 **Interview Prep** — IAS Personality Test simulation\n\n---\n\nSakshi, **IAS banana ek marathon hai, sprint nahi.** Aaj ka pehla sawaal pooch! 🎯`);
   loadSessions();
