@@ -11,7 +11,17 @@ const app = express();
 // Security & Middleware
 app.use(helmet());
 app.use(morgan('dev'));
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+app.use(cors({
+  origin: (origin, cb) => {
+    const allowed = (process.env.FRONTEND_URL || '').split(',').map(u => u.trim());
+    if (!origin || allowed.includes(origin) || origin.endsWith('.vercel.app')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json({ limit: '10mb' }));
 
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });

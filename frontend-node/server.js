@@ -1,6 +1,12 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const app = express();
+
+// Expose backend URL to frontend JS
+app.get('/config', (req, res) => {
+  res.json({ backendUrl: process.env.BACKEND_URL || 'http://localhost:8080' });
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -14,5 +20,5 @@ pages.forEach(page => {
   });
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Frontend running on http://localhost:${PORT}`));

@@ -1,4 +1,14 @@
-const API = 'http://localhost:8080/api';
+let API = '';
+
+async function initConfig() {
+  try {
+    const res = await fetch('/config');
+    const { backendUrl } = await res.json();
+    API = backendUrl + '/api';
+  } catch {
+    API = 'http://localhost:8080/api';
+  }
+}
 
 // Sidebar nav items
 const NAV = [
@@ -79,4 +89,7 @@ function loading(msg = 'Loading...') {
   </div>`;
 }
 
-document.addEventListener('DOMContentLoaded', initLayout);
+document.addEventListener('DOMContentLoaded', async () => {
+  await initConfig();
+  initLayout();
+});
