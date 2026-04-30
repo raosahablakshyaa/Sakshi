@@ -10,7 +10,7 @@ const app = express();
 
 // Security & Middleware
 app.use(helmet());
-app.use(morgan('dev'));
+if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
 app.use(cors({
   origin: (origin, cb) => {
     const allowed = (process.env.FRONTEND_URL || '').split(',').map(u => u.trim());
@@ -41,12 +41,22 @@ app.use('/api/parent', require('./routes/parent'));
 
 app.get('/health', (req, res) => res.json({ status: 'Sakshi\'s Mentor Backend Running 🚀' }));
 
-// MongoDB + Server Start
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log('✅ MongoDB Connected');
-    app.listen(process.env.PORT || 5000, () =>
-      console.log(`🚀 Server running on port ${process.env.PORT || 5000}`)
-    );
-  })
-  .catch(err => console.error('MongoDB Error:', err));
+// MongoDB connection (cached for serverless)
+let isConnected = false;
+async function connectDB() {
+  if (isConnected) return;
+  await mongoose.connect(process.env.MONGODB_URI);
+  isConnected = true;
+  console.log('✅ MongoDB Connected');
+}
+
+connectDB().catch(err => console.error('MongoDB Error:', err));
+
+// Export for Vercel (serverless) — also support local dev
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(process.env.PORT || 5000, () =>
+    console.log(`🚀 Server running on port ${process.env.PORT || 5000}`)
+  );
+}
+
+module.exports = app;
