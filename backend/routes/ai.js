@@ -99,8 +99,6 @@ router.post('/chat', protect, async (req, res) => {
 
     history.messages.push({ role: 'user', content: message });
 
-    const recentMessages = history.messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
-
     // Build personalized prompt
     const personalizedPrompt = buildPersonalizedPrompt(req.user);
 
